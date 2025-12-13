@@ -135,6 +135,7 @@ export default function Home() {
           <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             <a href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</a>
             <a href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</a>
+            <a href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</a>
             <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
             <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
             <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
@@ -155,10 +156,25 @@ export default function Home() {
               color: '#fff',
               borderRadius: '4px',
               textDecoration: 'none',
-              fontWeight: '600'
+              fontWeight: '600',
+              marginRight: '10px'
             }}
           >
             + Submit Content
+          </a>
+          <a
+            href="/import"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#28a745',
+              color: '#fff',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              fontWeight: '600'
+            }}
+          >
+            📥 Import CSV
           </a>
         </div>
 
