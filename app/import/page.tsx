@@ -9,6 +9,7 @@ interface ImportResult {
   imported: number;
   errors: string[];
   message?: string;
+  debug?: any;
 }
 
 export default function ImportPage() {
@@ -18,6 +19,7 @@ export default function ImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [preview, setPreview] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -36,15 +38,26 @@ export default function ImportPage() {
             const mapping: Record<string, string> = {};
             
             headers.forEach(header => {
-              const lower = header.toLowerCase();
-              if (lower.includes('title') || lower.includes('name')) mapping[header] = 'title';
-              else if (lower.includes('creator') || lower.includes('author') || lower.includes('user')) mapping[header] = 'creator';
-              else if (lower.includes('date') || lower.includes('created')) mapping[header] = 'date';
-              else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject')) mapping[header] = 'topics';
-              else if (lower.includes('format') || lower.includes('type')) mapping[header] = 'format';
-              else if (lower.includes('question') && lower.includes('count')) mapping[header] = 'questionCount';
-              else if (lower.includes('difficulty') || lower.includes('level')) mapping[header] = 'difficulty';
-              else if (lower.includes('description') || lower.includes('desc')) mapping[header] = 'description';
+              const lower = header.toLowerCase().trim();
+              if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
+                mapping[header] = 'title';
+              } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
+                mapping[header] = 'creator';
+              } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
+                mapping[header] = 'date';
+              } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject') || lower.includes('tag')) {
+                mapping[header] = 'topics';
+              } else if (lower.includes('format') || (lower.includes('type') && !lower.includes('question'))) {
+                mapping[header] = 'format';
+              } else if ((lower.includes('question') && lower.includes('count')) || lower.includes('questions') || lower === 'count') {
+                mapping[header] = 'questionCount';
+              } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
+                mapping[header] = 'difficulty';
+              } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
+                mapping[header] = 'description';
+              } else if (lower.includes('question') && lower.includes('type')) {
+                mapping[header] = 'types';
+              }
             });
             
             setColumnMapping(mapping);
@@ -75,6 +88,12 @@ export default function ImportPage() {
           const rows = results.data as any[];
           const errors: string[] = [];
           let imported = 0;
+          const debugInfo: any = {
+            totalRows: rows.length,
+            firstRow: rows[0],
+            columnMapping: columnMapping,
+            availableColumns: rows[0] ? Object.keys(rows[0]) : []
+          };
 
           for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
@@ -83,9 +102,11 @@ export default function ImportPage() {
               
               Object.keys(columnMapping).forEach(csvCol => {
                 const mappedField = columnMapping[csvCol];
+                if (!mappedField) return;
+                
                 const value = row[csvCol];
                 
-                if (value && value.toString().trim()) {
+                if (value !== undefined && value !== null && value.toString().trim()) {
                   if (mappedField === 'topics') {
                     metadata.topics = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
                   } else if (mappedField === 'questionCount') {
@@ -99,12 +120,14 @@ export default function ImportPage() {
               });
 
               if (!metadata.title) {
-                errors.push(`Row ${i + 1}: Missing title`);
+                const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
+                const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
+                errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
                 continue;
               }
 
               if (!metadata.creator) {
-                errors.push(`Row ${i + 1}: Missing creator`);
+                errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title})`);
                 continue;
               }
 
@@ -136,7 +159,8 @@ export default function ImportPage() {
             success: imported > 0,
             imported,
             errors,
-            message: `Imported ${imported} of ${rows.length} rows`
+            message: `Imported ${imported} of ${rows.length} rows`,
+            debug: debugInfo
           });
           setImporting(false);
         },
@@ -236,6 +260,9 @@ export default function ImportPage() {
                 <h3 style={{ marginBottom: '15px' }}>Column Mapping</h3>
                 <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
                   Map your CSV columns to our metadata fields. Auto-detected mappings are shown below.
+                  <strong style={{ color: '#c62828', display: 'block', marginTop: '5px' }}>
+                    Make sure "Title" and "Creator" columns are mapped!
+                  </strong>
                 </p>
                 <div style={{
                   background: '#f9f9f9',
@@ -253,12 +280,13 @@ export default function ImportPage() {
                           flex: 1,
                           padding: '8px',
                           border: '1px solid #ddd',
-                          borderRadius: '4px'
+                          borderRadius: '4px',
+                          background: columnMapping[csvCol] === 'title' || columnMapping[csvCol] === 'creator' ? '#fff3cd' : '#fff'
                         }}
                       >
                         <option value="">-- Skip --</option>
-                        <option value="title">Title</option>
-                        <option value="creator">Creator</option>
+                        <option value="title">Title *</option>
+                        <option value="creator">Creator *</option>
                         <option value="date">Date</option>
                         <option value="topics">Topics (comma-separated)</option>
                         <option value="format">Format</option>
@@ -318,6 +346,33 @@ export default function ImportPage() {
                 {result.errors.length > 0 && (
                   <div style={{ marginTop: '10px' }}>
                     <strong>Errors:</strong>
+                    <button
+                      onClick={() => setShowDebug(!showDebug)}
+                      style={{
+                        marginLeft: '10px',
+                        padding: '4px 8px',
+                        background: '#666',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      {showDebug ? 'Hide' : 'Show'} Debug Info
+                    </button>
+                    {showDebug && result.debug && (
+                      <pre style={{
+                        marginTop: '10px',
+                        padding: '10px',
+                        background: '#f5f5f5',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        overflow: 'auto'
+                      }}>
+                        {JSON.stringify(result.debug, null, 2)}
+                      </pre>
+                    )}
                     <ul style={{ marginTop: '5px', paddingLeft: '20px' }}>
                       {result.errors.slice(0, 10).map((error, idx) => (
                         <li key={idx} style={{ fontSize: '14px' }}>{error}</li>
@@ -369,4 +424,3 @@ export default function ImportPage() {
     </div>
   );
 }
-
