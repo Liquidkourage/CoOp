@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { ContentItem } from '@/lib/content';
@@ -133,14 +133,14 @@ export default function Home() {
           <h1>Trivia Content Repository</h1>
           <p>A collaborative repository for trivia content creators</p>
           <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <a href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</a>
-            <a href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</a>
-            <a href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</a>
-            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
-            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
-            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
-            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</a>
-            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</a>
+            <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
+            <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
+            <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</Link>
+            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</Link>
+            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</Link>
+            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</Link>
+            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</Link>
+            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</Link>
           </nav>
         </div>
       </header>
@@ -161,7 +161,7 @@ export default function Home() {
             }}
           >
             + Submit Content
-          </a>
+          </Link>
           <a
             href="/import"
             style={{
@@ -174,8 +174,8 @@ export default function Home() {
               fontWeight: '600'
             }}
           >
-            📥 Import CSV
-          </a>
+            ðŸ“¥ Import CSV
+          </Link>
         </div>
 
         {error && (
@@ -328,7 +328,7 @@ export default function Home() {
                           rel="noopener noreferrer"
                         >
                           Download {fileName}
-                        </a>
+                        </Link>
                       );
                     })}
                   </div>
@@ -341,3 +341,4 @@ export default function Home() {
     </div>
   );
 }
+
