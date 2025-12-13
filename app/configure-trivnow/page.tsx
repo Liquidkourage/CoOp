@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -79,7 +79,7 @@ export default function ConfigureTrivNowPage() {
             <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
             <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
             <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</Link>
-            <Link href="/configure-trivnow" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>âš™ï¸ Configure TrivNow</Link>
+            <Link href="/configure-trivnow" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>⚙️ Configure TrivNow</Link>
             <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
             <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
             <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
@@ -99,15 +99,15 @@ export default function ConfigureTrivNowPage() {
             <>
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
                 <h2 style={{ marginBottom: '20px' }}>Step 2: Map Columns</h2>
-                <p style={{ color: '#666', marginBottom: '15px' }}>Map each TrivNow column to our metadata fields. Make sure Title and Creator are mapped!</p>
+                <p style={{ color: '#666', marginBottom: '15px' }}>Map each TrivNow column to our metadata fields. All fields are optional.</p>
                 <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '4px', marginBottom: '15px' }}>
                   {headers.map((header) => (
                     <div key={header} style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <label style={{ minWidth: '200px', fontWeight: '500' }}>{header}:</label>
                       <select value={mapping[header] || ''} onChange={(e) => setMapping({ ...mapping, [header]: e.target.value })} style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
                         <option value="">-- Skip --</option>
-                        <option value="title">Title (Required)</option>
-                        <option value="creator">Creator (Required)</option>
+                        <option value="title">Title</option>
+                        <option value="creator">Creator</option>
                         <option value="date">Date</option>
                         <option value="topics">Topics</option>
                         <option value="format">Format</option>
@@ -118,9 +118,6 @@ export default function ConfigureTrivNowPage() {
                       </select>
                     </div>
                   ))}
-                </div>
-                <div style={{ background: '#fff3cd', border: '1px solid #ffc107', padding: '12px', borderRadius: '4px', marginBottom: '15px' }}>
-                  <strong>âš ï¸ Required Fields:</strong> Make sure both "Title" and "Creator" are mapped above!
                 </div>
               </div>
 
@@ -140,8 +137,8 @@ export default function ConfigureTrivNowPage() {
 
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
                 <h2 style={{ marginBottom: '20px' }}>Step 4: Save Configuration</h2>
-                <button onClick={handleSave} disabled={!mapping['title'] || !mapping['creator']} style={{ padding: '12px 24px', background: (!mapping['title'] || !mapping['creator']) ? '#ccc' : '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: (!mapping['title'] || !mapping['creator']) ? 'not-allowed' : 'pointer', marginBottom: '15px' }}>Save Configuration</button>
-                {configured && <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '4px', color: '#2e7d32' }}>âœ“ Configuration saved! The import page will use these mappings for TrivNow format.</div>}
+                <button onClick={handleSave} style={{ padding: '12px 24px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer', marginBottom: '15px' }}>Save Configuration</button>
+                {configured && <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '4px', color: '#2e7d32' }}>✓ Configuration saved! The import page will use these mappings for TrivNow format.</div>}
               </div>
             </>
           )}
