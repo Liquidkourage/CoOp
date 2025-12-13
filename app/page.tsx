@@ -132,10 +132,36 @@ export default function Home() {
         <div className="container">
           <h1>Trivia Content Repository</h1>
           <p>A collaborative repository for trivia content creators</p>
+          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <a href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</a>
+            <a href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</a>
+            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
+            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
+            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
+            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</a>
+            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</a>
+          </nav>
         </div>
       </header>
 
       <main className="container">
+        <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+          <a
+            href="/submit"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#0066cc',
+              color: '#fff',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              fontWeight: '600'
+            }}
+          >
+            + Submit Content
+          </a>
+        </div>
+
         {error && (
           <div className="error">
             Error: {error}
@@ -299,4 +325,3 @@ export default function Home() {
     </div>
   );
 }
-
