@@ -145,154 +145,79 @@ export default function ImportPage() {
             firstRow: rows[0],
             columnMapping: columnMapping,
             availableColumns: rows[0] ? Object.keys(rows[0]) : [],
-            isTrivnowFormat: isTrivnowFormat,
-            groupingFields: trivnowConfig?.groupingFields || []
+            isTrivnowFormat: isTrivnowFormat
           };
 
-          // If TrivNow format with grouping fields, group questions by quiz-level fields
-          if (isTrivnowFormat && trivnowConfig?.groupingFields && trivnowConfig.groupingFields.length > 0) {
-            const groups = new Map<string, any[]>();
-            
-            // Group rows by grouping fields
-            rows.forEach((row, idx) => {
-              const groupKey = trivnowConfig.groupingFields
-                .map((field: string) => `${field}=${row[field] || ''}`)
-                .join('|');
+          // Import each row as a separate content item (one row = one content item)
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            try {
+              const metadata: any = {};
               
-              if (!groups.has(groupKey)) {
-                groups.set(groupKey, []);
-              }
-              groups.get(groupKey)!.push({ row, index: idx + 1 });
-            });
-
-            debugInfo.groupsFound = groups.size;
-            debugInfo.groupSizes = Array.from(groups.values()).map(g => g.length);
-
-            // Process each group as one content item
-            for (const [groupKey, questionRows] of groups.entries()) {
-              try {
-                // Use the first row in the group for quiz-level metadata
-                const firstRow = questionRows[0].row;
-                const metadata: any = {};
+              Object.keys(columnMapping).forEach(csvCol => {
+                const mappedField = columnMapping[csvCol];
+                if (!mappedField) return;
                 
-                // Map quiz-level fields (all fields except question-specific ones)
-                Object.keys(columnMapping).forEach(csvCol => {
-                  const mappedField = columnMapping[csvCol];
-                  if (!mappedField) return;
-                  
-                  const value = firstRow[csvCol];
-                  
-                  if (value !== undefined && value !== null && value.toString().trim()) {
-                    if (mappedField === 'topics') {
-                      metadata.topics = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                    } else if (mappedField === 'types') {
-                      metadata.types = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                    } else {
-                      metadata[mappedField] = value.toString().trim();
-                    }
+                const value = row[csvCol];
+                
+                if (value !== undefined && value !== null && value.toString().trim()) {
+                  if (mappedField === 'topics') {
+                    metadata.topics = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
+                  } else if (mappedField === 'questionCount') {
+                    metadata.questionCount = parseInt(value.toString()) || undefined;
+                  } else if (mappedField === 'types') {
+                    metadata.types = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
+                  } else {
+                    metadata[mappedField] = value.toString().trim();
                   }
-                });
-
-                // Set question count to number of questions in this group
-                metadata.questionCount = questionRows.length;
-
-                // Generate title if not mapped
-                if (!metadata.title) {
-                  const groupingValues = trivnowConfig.groupingFields
-                    .map((field: string) => firstRow[field])
-                    .filter(Boolean)
-                    .join(' - ');
-                  metadata.title = groupingValues || `TrivNow Quiz (${questionRows.length} questions)`;
                 }
+              });
 
-                // Generate creator if not mapped
-                if (!metadata.creator) {
-                  metadata.creator = firstRow['source'] || 'Unknown';
-                }
-
-                if (!metadata.date) {
-                  metadata.date = new Date().toISOString().split('T')[0];
-                }
-
-                const formData = new FormData();
-                formData.append('metadata', JSON.stringify(metadata));
-
-                const response = await fetch('/api/submit', {
-                  method: 'POST',
-                  body: formData,
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                  errors.push(`Group (${questionRows.length} questions): ${result.error || 'Failed to import'}`);
+              // For TrivNow format, generate title from question if not mapped
+              if (!metadata.title) {
+                if (isTrivnowFormat && row['question']) {
+                  // Use first part of question as title
+                  const questionText = row['question'].toString().substring(0, 100);
+                  metadata.title = questionText + (questionText.length >= 100 ? '...' : '');
                 } else {
-                  imported++;
-                }
-              } catch (error) {
-                errors.push(`Group (${questionRows.length} questions): ${error instanceof Error ? error.message : 'Unknown error'}`);
-              }
-            }
-          } else {
-            // Standard import: one row = one content item
-            for (let i = 0; i < rows.length; i++) {
-              const row = rows[i];
-              try {
-                const metadata: any = {};
-                
-                Object.keys(columnMapping).forEach(csvCol => {
-                  const mappedField = columnMapping[csvCol];
-                  if (!mappedField) return;
-                  
-                  const value = row[csvCol];
-                  
-                  if (value !== undefined && value !== null && value.toString().trim()) {
-                    if (mappedField === 'topics') {
-                      metadata.topics = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                    } else if (mappedField === 'questionCount') {
-                      metadata.questionCount = parseInt(value.toString()) || undefined;
-                    } else if (mappedField === 'types') {
-                      metadata.types = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                    } else {
-                      metadata[mappedField] = value.toString().trim();
-                    }
-                  }
-                });
-
-                if (!metadata.title) {
                   const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
                   const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
                   errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
                   continue;
                 }
+              }
 
-                if (!metadata.creator) {
+              // For TrivNow format, use source as creator if not mapped
+              if (!metadata.creator) {
+                if (isTrivnowFormat && row['source']) {
+                  metadata.creator = row['source'].toString();
+                } else {
                   errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title})`);
                   continue;
                 }
-
-                if (!metadata.date) {
-                  metadata.date = new Date().toISOString().split('T')[0];
-                }
-
-                const formData = new FormData();
-                formData.append('metadata', JSON.stringify(metadata));
-
-                const response = await fetch('/api/submit', {
-                  method: 'POST',
-                  body: formData,
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                  errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
-                } else {
-                  imported++;
-                }
-              } catch (error) {
-                errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
               }
+
+              if (!metadata.date) {
+                metadata.date = new Date().toISOString().split('T')[0];
+              }
+
+              const formData = new FormData();
+              formData.append('metadata', JSON.stringify(metadata));
+
+              const response = await fetch('/api/submit', {
+                method: 'POST',
+                body: formData,
+              });
+
+              const result = await response.json();
+
+              if (!response.ok) {
+                errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
+              } else {
+                imported++;
+              }
+            } catch (error) {
+              errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           }
 
@@ -399,20 +324,19 @@ export default function ImportPage() {
             {preview.length > 0 && (
               <div style={{ marginBottom: '30px' }}>
                 <h3 style={{ marginBottom: '15px' }}>Column Mapping</h3>
-                {isTrivnowFormat && trivnowConfig?.groupingFields && trivnowConfig.groupingFields.length > 0 && (
+                {isTrivnowFormat && (
                   <div style={{
-                    background: '#fff3cd',
-                    border: '1px solid #ffc107',
+                    background: '#e3f2fd',
+                    border: '1px solid #2196f3',
                     padding: '15px',
                     borderRadius: '4px',
                     marginBottom: '15px'
                   }}>
                     <strong>⚙️ TrivNow Format Detected</strong>
                     <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>
-                      Questions will be grouped by: <strong>{trivnowConfig.groupingFields.join(', ')}</strong>
+                      Each row will be imported as a separate content item. Map the columns you want to include in the metadata.
                       <br />
-                      Each unique combination of these fields will create one content item (quiz) containing all matching questions.
-                      The question count will be automatically set to the number of questions in each group.
+                      <strong>Tip:</strong> The "question" column can be mapped to "description", and "source" can be mapped to "creator".
                     </p>
                   </div>
                 )}

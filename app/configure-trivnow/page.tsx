@@ -156,14 +156,19 @@ export default function ConfigureTrivNowPage() {
               </div>
 
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-                <h2 style={{ marginBottom: '20px' }}>Step 3: Select Quiz-Level Grouping Fields</h2>
+                <h2 style={{ marginBottom: '20px' }}>Step 3: Select Quiz-Level Grouping Fields (Optional)</h2>
                 <p style={{ color: '#666', marginBottom: '15px' }}>
-                  In TrivNow, each CSV row is a <strong>question</strong>, but many fields (like format, timer, points, etc.) are quiz-level settings that apply to all questions in a quiz.
+                  <strong>By default, each row (question) will be imported as a separate content item.</strong>
                   <br /><br />
-                  Select which fields should be used to <strong>group questions into quizzes</strong>. Questions with the same values for these fields will be grouped together into one content item.
+                  If you want to group questions into quizzes instead, select which fields should be used to group questions. 
+                  Questions with the same values for these fields will be grouped together into one content item.
+                  <br /><br />
+                  <strong>Leave empty to import each question separately.</strong>
                 </p>
                 <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #2196f3' }}>
                   <strong>💡 Tip:</strong> Common quiz-level fields include: format, timer, points, speedBonusPool, round, source, category, and scoring-related fields.
+                  <br />
+                  <strong>Note:</strong> If no fields are selected, each CSV row will be imported as a separate content item.
                 </div>
                 <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '4px', marginBottom: '15px' }}>
                   {headers.map((header) => (
