@@ -21,7 +21,7 @@ export async function GET(
       );
     }
     
-    const allowedDirs = ['creators', 'topics', 'archive', 'formats', 'examples'];
+    const allowedDirs = ['creators', 'topics', 'archive', 'formats', 'examples', 'uploads'];
     const firstDir = filePath.split('/')[0];
     
     if (!allowedDirs.includes(firstDir)) {

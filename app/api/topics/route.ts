@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
-import { loadAllContent, getAllTopics } from '@/lib/content';
+import { getAllTopics, initDatabase } from '@/lib/db';
+import { loadAllContent, getAllTopics as getAllFileTopics } from '@/lib/content';
 
 export async function GET() {
   try {
-    const content = loadAllContent();
-    const topics = getAllTopics(content);
+    let topics;
+    try {
+      await initDatabase();
+      topics = await getAllTopics();
+    } catch (dbError) {
+      console.warn('Database not available, using file system:', dbError);
+      const content = loadAllContent();
+      topics = getAllFileTopics(content);
+    }
     
     return NextResponse.json({
       success: true,
@@ -19,4 +27,3 @@ export async function GET() {
     );
   }
 }
-

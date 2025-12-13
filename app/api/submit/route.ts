@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { insertContent, initDatabase } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize database if needed
+    await initDatabase();
+
     const formData = await request.formData();
     const metadataStr = formData.get('metadata') as string;
     
@@ -25,13 +29,15 @@ export async function POST(request: NextRequest) {
     }
 
     const creatorName = metadata.creator?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'unknown';
-    const baseDir = path.join(process.cwd(), 'creators', creatorName);
+    const baseDir = path.join(process.cwd(), 'uploads', creatorName);
     
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
 
     const savedFiles: string[] = [];
+    const filePaths: string[] = [];
+    
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -40,25 +46,76 @@ export async function POST(request: NextRequest) {
       
       fs.writeFileSync(filePath, buffer);
       savedFiles.push(fileName);
+      filePaths.push(`uploads/${creatorName}/${fileName}`);
     }
 
-    metadata.files = savedFiles;
-
-    const metadataPath = path.join(baseDir, 'metadata.json');
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+    // Save to database
+    const dbRecord = await insertContent({
+      title: metadata.title,
+      creator: metadata.creator,
+      date: metadata.date,
+      topics: metadata.topics,
+      format: metadata.format,
+      questionCount: metadata.questionCount,
+      difficulty: metadata.difficulty,
+      types: metadata.types,
+      description: metadata.description,
+      language: metadata.language,
+      license: metadata.license,
+      source: metadata.source,
+      tags: metadata.tags,
+      files: savedFiles,
+      filePaths: filePaths
+    });
 
     return NextResponse.json({
       success: true,
       message: 'Content submitted successfully',
-      path: `creators/${creatorName}`,
+      id: dbRecord.id,
+      path: `uploads/${creatorName}`,
       files: savedFiles
     });
   } catch (error) {
     console.error('Error submitting content:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to submit content' },
-      { status: 500 }
-    );
+    // If database fails, try file-based fallback
+    try {
+      const formData = await request.formData();
+      const metadataStr = formData.get('metadata') as string;
+      const metadata = JSON.parse(metadataStr);
+      const files = formData.getAll('files') as File[];
+
+      const creatorName = metadata.creator?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'unknown';
+      const baseDir = path.join(process.cwd(), 'creators', creatorName);
+      
+      if (!fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
+      }
+
+      const savedFiles: string[] = [];
+      for (const file of files) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const fileName = file.name;
+        const filePath = path.join(baseDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+        savedFiles.push(fileName);
+      }
+
+      metadata.files = savedFiles;
+      const metadataPath = path.join(baseDir, 'metadata.json');
+      fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+
+      return NextResponse.json({
+        success: true,
+        message: 'Content submitted successfully (file-based fallback)',
+        path: `creators/${creatorName}`,
+        files: savedFiles
+      });
+    } catch (fallbackError) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to submit content' },
+        { status: 500 }
+      );
+    }
   }
 }
-
