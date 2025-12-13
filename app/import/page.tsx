@@ -155,6 +155,9 @@ export default function ImportPage() {
             try {
               const metadata: any = {};
               
+              // First pass: collect all values for each mapped field
+              const fieldValues: Record<string, string[]> = {};
+              
               Object.keys(columnMapping).forEach(csvCol => {
                 const mappedField = columnMapping[csvCol];
                 if (!mappedField) return;
@@ -162,15 +165,38 @@ export default function ImportPage() {
                 const value = row[csvCol];
                 
                 if (value !== undefined && value !== null && value.toString().trim()) {
-                  if (mappedField === 'topics') {
-                    metadata.topics = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                  } else if (mappedField === 'questionCount') {
-                    metadata.questionCount = parseInt(value.toString()) || undefined;
-                  } else if (mappedField === 'types') {
-                    metadata.types = value.toString().split(',').map((t: string) => t.trim()).filter(Boolean);
-                  } else {
-                    metadata[mappedField] = value.toString().trim();
+                  if (!fieldValues[mappedField]) {
+                    fieldValues[mappedField] = [];
                   }
+                  fieldValues[mappedField].push(value.toString().trim());
+                }
+              });
+              
+              // Process collected values
+              Object.keys(fieldValues).forEach(mappedField => {
+                const values = fieldValues[mappedField];
+                
+                if (mappedField === 'topics') {
+                  // Combine all topic values and split by comma
+                  const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+                  metadata.topics = [...new Set(allTopics)]; // Remove duplicates
+                } else if (mappedField === 'questionCount') {
+                  // Use the first valid number
+                  const num = parseInt(values[0]) || undefined;
+                  if (num) metadata.questionCount = num;
+                } else if (mappedField === 'types') {
+                  // Combine all type values and split by comma
+                  const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+                  metadata.types = [...new Set(allTypes)]; // Remove duplicates
+                } else if (mappedField === 'description') {
+                  // Concatenate multiple description fields with line breaks
+                  metadata.description = values.join('\n\n');
+                } else if (mappedField === 'creator') {
+                  // Use first non-empty creator value
+                  metadata.creator = values.find(v => v) || '';
+                } else {
+                  // For other fields, use the first value (or concatenate if it makes sense)
+                  metadata[mappedField] = values[0];
                 }
               });
 
