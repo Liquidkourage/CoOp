@@ -22,6 +22,7 @@ export default function ImportPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [trivnowConfig, setTrivnowConfig] = useState<any>(null);
   const [isTrivnowFormat, setIsTrivnowFormat] = useState(false);
+  const [defaultCreator, setDefaultCreator] = useState<string>('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -187,12 +188,14 @@ export default function ImportPage() {
                 }
               }
 
-              // For TrivNow format, use source as creator if not mapped
+              // Use default creator if no creator is mapped
               if (!metadata.creator) {
-                if (isTrivnowFormat && row['source']) {
+                if (defaultCreator.trim()) {
+                  metadata.creator = defaultCreator.trim();
+                } else if (isTrivnowFormat && row['source']) {
                   metadata.creator = row['source'].toString();
                 } else {
-                  errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title})`);
+                  errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title}). Please set a default creator above.`);
                   continue;
                 }
               }
@@ -279,7 +282,8 @@ export default function ImportPage() {
               fontSize: '14px',
               marginBottom: '20px'
             }}>
-              <div><strong>Required:</strong> title, creator</div>
+              <div><strong>Required:</strong> title (or will be auto-generated from question text)</div>
+              <div><strong>Creator:</strong> Either map a "creator" column OR set a default creator below</div>
               <div><strong>Optional:</strong> date, topics (comma-separated), format, questionCount, difficulty, types, description</div>
             </div>
             <div style={{
@@ -340,11 +344,38 @@ export default function ImportPage() {
                     </p>
                   </div>
                 )}
+                <div style={{
+                  background: '#f0f7ff',
+                  border: '1px solid #0066cc',
+                  padding: '15px',
+                  borderRadius: '4px',
+                  marginBottom: '15px'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                    Default Creator (Required if CSV doesn't have creator column)
+                  </label>
+                  <input
+                    type="text"
+                    value={defaultCreator}
+                    onChange={(e) => setDefaultCreator(e.target.value)}
+                    placeholder="Enter your name or creator name"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '16px'
+                    }}
+                  />
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#666' }}>
+                    This will be used as the creator for all imported items if no creator column is mapped.
+                  </p>
+                </div>
                 <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
                   Map your CSV columns to our metadata fields. Auto-detected mappings are shown below.
                   {!isTrivnowFormat && (
                     <strong style={{ color: '#c62828', display: 'block', marginTop: '5px' }}>
-                      Make sure "Title" and "Creator" columns are mapped!
+                      Make sure "Title" column is mapped, or set a default creator above!
                     </strong>
                   )}
                 </p>
