@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ContentItem } from '@/lib/content';
 
 interface ContentResponse {
@@ -136,11 +137,11 @@ export default function Home() {
             <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
             <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
             <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</Link>
-            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</Link>
-            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</Link>
-            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</Link>
-            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</Link>
-            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</Link>
+            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
+            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
+            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
+            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</a>
+            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</a>
           </nav>
         </div>
       </header>
@@ -161,7 +162,7 @@ export default function Home() {
             }}
           >
             + Submit Content
-          </Link>
+          </a>
           <a
             href="/import"
             style={{
@@ -174,8 +175,8 @@ export default function Home() {
               fontWeight: '600'
             }}
           >
-            ðŸ“¥ Import CSV
-          </Link>
+            📥 Import CSV
+          </a>
         </div>
 
         {error && (
@@ -328,7 +329,7 @@ export default function Home() {
                           rel="noopener noreferrer"
                         >
                           Download {fileName}
-                        </Link>
+                        </a>
                       );
                     })}
                   </div>
