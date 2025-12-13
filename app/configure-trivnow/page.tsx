@@ -8,6 +8,7 @@ export default function ConfigureTrivNowPage() {
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [groupingFields, setGroupingFields] = useState<string[]>([]);
   const [detectionPatterns, setDetectionPatterns] = useState<string[]>([]);
   const [configured, setConfigured] = useState(false);
 
@@ -64,6 +65,14 @@ export default function ConfigureTrivNowPage() {
               }
             });
             setMapping(autoMapping);
+            
+            // Auto-detect likely quiz-level grouping fields for TrivNow
+            const likelyGroupingFields = csvHeaders.filter(h => {
+              const lower = h.toLowerCase().trim();
+              return ['format', 'timer', 'points', 'speedbonuspool', 'round', 'source', 'category'].includes(lower) ||
+                     lower.includes('bonus') || lower.includes('wager') || lower.includes('scoring');
+            });
+            setGroupingFields(likelyGroupingFields);
           }
         },
         error: (error) => {
@@ -77,12 +86,21 @@ export default function ConfigureTrivNowPage() {
     const config = {
       detectionPatterns,
       columnMapping: mapping,
+      groupingFields: groupingFields,
       configuredAt: new Date().toISOString()
     };
     
     localStorage.setItem('trivnow-config', JSON.stringify(config));
     setConfigured(true);
     alert('Configuration saved! The import page will now use these mappings for TrivNow format detection.');
+  };
+
+  const toggleGroupingField = (field: string) => {
+    if (groupingFields.includes(field)) {
+      setGroupingFields(groupingFields.filter(f => f !== field));
+    } else {
+      setGroupingFields([...groupingFields, field]);
+    }
   };
 
   return (
@@ -138,7 +156,44 @@ export default function ConfigureTrivNowPage() {
               </div>
 
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-                <h2 style={{ marginBottom: '20px' }}>Step 3: Review Detection Patterns</h2>
+                <h2 style={{ marginBottom: '20px' }}>Step 3: Select Quiz-Level Grouping Fields</h2>
+                <p style={{ color: '#666', marginBottom: '15px' }}>
+                  In TrivNow, each CSV row is a <strong>question</strong>, but many fields (like format, timer, points, etc.) are quiz-level settings that apply to all questions in a quiz.
+                  <br /><br />
+                  Select which fields should be used to <strong>group questions into quizzes</strong>. Questions with the same values for these fields will be grouped together into one content item.
+                </p>
+                <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #2196f3' }}>
+                  <strong>💡 Tip:</strong> Common quiz-level fields include: format, timer, points, speedBonusPool, round, source, category, and scoring-related fields.
+                </div>
+                <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '4px', marginBottom: '15px' }}>
+                  {headers.map((header) => (
+                    <div key={header} style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="checkbox"
+                        checked={groupingFields.includes(header)}
+                        onChange={() => toggleGroupingField(header)}
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                      />
+                      <label style={{ fontWeight: '500', cursor: 'pointer', flex: 1 }}>{header}</label>
+                      {mapping[header] && (
+                        <span style={{ color: '#666', fontSize: '14px' }}>(mapped to: {mapping[header]})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {groupingFields.length > 0 && (
+                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '4px', marginTop: '15px' }}>
+                    <strong>Selected grouping fields:</strong> {groupingFields.join(', ')}
+                    <br />
+                    <span style={{ fontSize: '14px', color: '#666' }}>
+                      Questions will be grouped by unique combinations of these fields.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+                <h2 style={{ marginBottom: '20px' }}>Step 4: Review Detection Patterns</h2>
                 <p style={{ color: '#666', marginBottom: '15px' }}>These patterns will be used to detect TrivNow format. You can edit them:</p>
                 <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '4px', marginBottom: '15px' }}>
                   {detectionPatterns.map((pattern, idx) => (
@@ -152,7 +207,7 @@ export default function ConfigureTrivNowPage() {
               </div>
 
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-                <h2 style={{ marginBottom: '20px' }}>Step 4: Save Configuration</h2>
+                <h2 style={{ marginBottom: '20px' }}>Step 5: Save Configuration</h2>
                 <button onClick={handleSave} style={{ padding: '12px 24px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer', marginBottom: '15px' }}>Save Configuration</button>
                 {configured && <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '4px', color: '#2e7d32' }}>✓ Configuration saved! The import page will use these mappings for TrivNow format.</div>}
               </div>
