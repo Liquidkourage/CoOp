@@ -1,0 +1,343 @@
+﻿'use client';
+
+import { useState, useEffect } from 'react';
+import { ContentItem } from '@/lib/content';
+
+interface ContentResponse {
+  success: boolean;
+  count: number;
+  content: ContentItem[];
+}
+
+interface TopicsResponse {
+  success: boolean;
+  topics: string[];
+}
+
+interface CreatorsResponse {
+  success: boolean;
+  creators: string[];
+}
+
+export default function Home() {
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
+  const [creators, setCreators] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [selectedCreator, setSelectedCreator] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('');
+  const [selectedFormat, setSelectedFormat] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    filterContent();
+  }, [content, searchQuery, selectedTopic, selectedCreator, selectedDifficulty, selectedFormat]);
+
+  async function loadData() {
+    try {
+      setLoading(true);
+      
+      const contentRes = await fetch('/api/content');
+      const contentData: ContentResponse = await contentRes.json();
+      
+      if (!contentData.success) {
+        throw new Error('Failed to load content');
+      }
+      
+      setContent(contentData.content);
+      setFilteredContent(contentData.content);
+      
+      const topicsRes = await fetch('/api/topics');
+      const topicsData: TopicsResponse = await topicsRes.json();
+      if (topicsData.success) {
+        setTopics(topicsData.topics);
+      }
+      
+      const creatorsRes = await fetch('/api/creators');
+      const creatorsData: CreatorsResponse = await creatorsRes.json();
+      if (creatorsData.success) {
+        setCreators(creatorsData.creators);
+      }
+      
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function filterContent() {
+    if (!content.length) return;
+    
+    try {
+      const params = new URLSearchParams();
+      if (selectedTopic) params.append('topics', selectedTopic);
+      if (selectedCreator) params.append('creator', selectedCreator);
+      if (selectedDifficulty) params.append('difficulty', selectedDifficulty);
+      if (selectedFormat) params.append('format', selectedFormat);
+      
+      let results = content;
+      
+      if (params.toString()) {
+        const res = await fetch(`/api/content?${params}`);
+        const data: ContentResponse = await res.json();
+        if (data.success) {
+          results = data.content;
+        }
+      }
+      
+      if (searchQuery) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+        const searchData = await res.json();
+        if (searchData.success) {
+          const searchIds = new Set(searchData.results.map((item: ContentItem) => item.id));
+          results = results.filter(item => searchIds.has(item.id));
+        }
+      }
+      
+      setFilteredContent(results);
+    } catch (err) {
+      console.error('Error filtering content:', err);
+    }
+  }
+
+  function clearFilters() {
+    setSearchQuery('');
+    setSelectedTopic('');
+    setSelectedCreator('');
+    setSelectedDifficulty('');
+    setSelectedFormat('');
+  }
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <p>Loading content...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <header className="header">
+        <div className="container">
+          <h1>Trivia Content Repository</h1>
+          <p>A collaborative repository for trivia content creators</p>
+          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <a href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</a>
+            <a href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</a>
+            <a href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</a>
+            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
+            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
+            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
+            <a href="/api/search?q=test" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Search</a>
+            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</a>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container">
+        <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+          <a
+            href="/submit"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#0066cc',
+              color: '#fff',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              marginRight: '10px'
+            }}
+          >
+            + Submit Content
+          </a>
+          <a
+            href="/import"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#28a745',
+              color: '#fff',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              fontWeight: '600'
+            }}
+          >
+            ðŸ“¥ Import CSV
+          </a>
+        </div>
+
+        {error && (
+          <div className="error">
+            Error: {error}
+          </div>
+        )}
+
+        <div className="stats">
+          <p>Found {filteredContent.length} content item{filteredContent.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search by title, creator, topic, or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="filters">
+          <div className="filter-group">
+            <label>Topic</label>
+            <select
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+            >
+              <option value="">All Topics</option>
+              {topics.map(topic => (
+                <option key={topic} value={topic}>{topic}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Creator</label>
+            <select
+              value={selectedCreator}
+              onChange={(e) => setSelectedCreator(e.target.value)}
+            >
+              <option value="">All Creators</option>
+              {creators.map(creator => (
+                <option key={creator} value={creator}>{creator}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Difficulty</label>
+            <select
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+            >
+              <option value="">All Levels</option>
+              <option value="beginner">Beginner</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Format</label>
+            <select
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value)}
+            >
+              <option value="">All Formats</option>
+              <option value="pdf">PDF</option>
+              <option value="xlsx">Excel</option>
+              <option value="pptx">PowerPoint</option>
+              <option value="txt">Text</option>
+              <option value="json">JSON</option>
+              <option value="image">Image</option>
+            </select>
+          </div>
+
+          {(selectedTopic || selectedCreator || selectedDifficulty || selectedFormat || searchQuery) && (
+            <div className="filter-group" style={{ justifyContent: 'flex-end' }}>
+              <button
+                onClick={clearFilters}
+                style={{
+                  padding: '8px 16px',
+                  background: '#666',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
+        </div>
+
+        {filteredContent.length === 0 ? (
+          <div className="loading">
+            <p>No content found. Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <div className="content-grid">
+            {filteredContent.map((item) => (
+              <div key={item.id} className="content-card">
+                <h3>{item.metadata.title || 'Untitled'}</h3>
+                
+                <div className="meta">
+                  {item.metadata.creator && (
+                    <div><strong>Creator:</strong> {item.metadata.creator}</div>
+                  )}
+                  {item.metadata.date && (
+                    <div><strong>Date:</strong> {item.metadata.date}</div>
+                  )}
+                  {item.metadata.questionCount && (
+                    <div><strong>Questions:</strong> {item.metadata.questionCount}</div>
+                  )}
+                  {item.metadata.difficulty && (
+                    <div><strong>Difficulty:</strong> {item.metadata.difficulty}</div>
+                  )}
+                  {item.metadata.format && (
+                    <div><strong>Format:</strong> {item.metadata.format}</div>
+                  )}
+                </div>
+
+                {item.metadata.topics && item.metadata.topics.length > 0 && (
+                  <div className="topics">
+                    {item.metadata.topics.map(topic => (
+                      <span key={topic} className="topic-tag">{topic}</span>
+                    ))}
+                  </div>
+                )}
+
+                {item.metadata.description && (
+                  <div className="description">{item.metadata.description}</div>
+                )}
+
+                {item.files.length > 0 && (
+                  <div className="files">
+                    {item.files.map((file, idx) => {
+                      const fileName = file.split('/').pop() || file;
+                      const filePath = file.startsWith('/') ? file.slice(1) : file;
+                      return (
+                        <a
+                          key={idx}
+                          href={`/api/files/${filePath}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Download {fileName}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
