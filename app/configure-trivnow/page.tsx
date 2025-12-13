@@ -29,15 +29,31 @@ export default function ConfigureTrivNowPage() {
             const autoMapping: Record<string, string> = {};
             csvHeaders.forEach(header => {
               const lower = header.toLowerCase().trim();
-              if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
+              // TrivNow-specific mappings
+              if (lower === 'category') {
+                autoMapping[header] = 'topics';
+              } else if (lower === 'source') {
+                autoMapping[header] = 'creator';
+              } else if (lower === 'question') {
+                autoMapping[header] = 'description';
+              } else if (lower === 'note') {
+                autoMapping[header] = 'description';
+              } else if (lower === 'format') {
+                autoMapping[header] = 'format';
+              } else if (lower === 'round') {
+                // Could be used for grouping/organization
+                autoMapping[header] = 'description';
+              }
+              // General mappings (fallback)
+              else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
                 autoMapping[header] = 'title';
               } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('created_by')) {
                 autoMapping[header] = 'creator';
               } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
                 autoMapping[header] = 'date';
-              } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject')) {
+              } else if (lower.includes('topic') || lower.includes('subject')) {
                 autoMapping[header] = 'topics';
-              } else if (lower.includes('format') || lower.includes('type')) {
+              } else if (lower.includes('type')) {
                 autoMapping[header] = 'format';
               } else if (lower.includes('question') && lower.includes('count')) {
                 autoMapping[header] = 'questionCount';
