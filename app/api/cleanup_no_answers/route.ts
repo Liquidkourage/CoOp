@@ -5,16 +5,8 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  return NextResponse.json({ 
-    message: 'Cleanup endpoint is available. Use POST method to delete entries without answers.',
-    endpoint: '/api/cleanup_no_answers',
-    method: 'POST'
-  });
-}
-
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  console.log('Cleanup POST endpoint called');
+async function handleCleanup(): Promise<NextResponse> {
+  console.log('Cleanup endpoint called');
   try {
     let deletedCount = 0;
     const errors: string[] = [];
@@ -91,5 +83,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'Cleanup endpoint is available. Use POST method to delete entries without answers.',
+    endpoint: '/api/cleanup_no_answers',
+    method: 'POST'
+  });
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  return handleCleanup();
 }
 
