@@ -33,6 +33,7 @@ export default function Home() {
   const [selectedCreator, setSelectedCreator] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('');
   const [selectedFormat, setSelectedFormat] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -117,6 +118,33 @@ export default function Home() {
     setSelectedCreator('');
     setSelectedDifficulty('');
     setSelectedFormat('');
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this item?')) {
+      return;
+    }
+
+    setDeleting(id);
+    try {
+      const response = await fetch(`/api/delete?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete');
+      }
+
+      // Remove from local state
+      setContent(content.filter(item => item.id !== id));
+      setFilteredContent(filteredContent.filter(item => item.id !== id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to delete item');
+    } finally {
+      setDeleting(null);
+    }
   }
 
   if (loading) {
@@ -308,6 +336,7 @@ export default function Home() {
                   <th>Creator</th>
                   <th>Date</th>
                   {filteredContent.some(item => item.files.length > 0) && <th>Files</th>}
+                  <th style={{ width: '80px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,6 +407,16 @@ export default function Home() {
                           )}
                         </td>
                       )}
+                      <td>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deleting === item.id}
+                          className="delete-btn"
+                          title="Delete this item"
+                        >
+                          {deleting === item.id ? '...' : '🗑️'}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
