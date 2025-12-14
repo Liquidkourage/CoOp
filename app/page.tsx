@@ -33,6 +33,7 @@ export default function Home() {
   const [selectedCreator, setSelectedCreator] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('');
   const [selectedFormat, setSelectedFormat] = useState('');
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -119,6 +120,37 @@ export default function Home() {
     setSelectedFormat('');
   }
 
+  async function cleanupNoAnswers() {
+    if (!confirm('This will permanently delete ALL entries without answers. Are you sure?')) {
+      return;
+    }
+    
+    if (!confirm('This action cannot be undone. Are you absolutely sure?')) {
+      return;
+    }
+
+    setCleaningUp(true);
+    try {
+      const response = await fetch('/api/cleanup-no-answers', {
+        method: 'POST',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to cleanup');
+      }
+
+      alert(`Cleanup complete: ${result.deleted} entries deleted${result.errors ? `. Errors: ${result.errors.length}` : ''}`);
+      // Reload data
+      await loadData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to cleanup entries');
+    } finally {
+      setCleaningUp(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="loading">
@@ -201,8 +233,25 @@ export default function Home() {
           </div>
         )}
 
-        <div className="stats">
+        <div className="stats" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p>Found {filteredContent.length} content item{filteredContent.length !== 1 ? 's' : ''}</p>
+          <button
+            onClick={cleanupNoAnswers}
+            disabled={cleaningUp}
+            style={{
+              padding: '8px 16px',
+              background: cleaningUp ? '#ccc' : '#dc3545',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: cleaningUp ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+            title="Delete all entries without answers"
+          >
+            {cleaningUp ? 'Cleaning up...' : '🗑️ Delete entries without answers'}
+          </button>
         </div>
 
         <div className="search-bar">
