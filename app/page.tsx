@@ -133,6 +133,9 @@ export default function Home() {
     try {
       const response = await fetch('/api/cleanup_no_answers', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       const result = await response.json();
