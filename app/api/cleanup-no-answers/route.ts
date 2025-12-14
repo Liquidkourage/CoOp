@@ -5,24 +5,26 @@ import path from 'path';
 
 export async function POST(request: NextRequest) {
   try {
-    await initDatabase();
-    const client = await pool.connect();
-    
     let deletedCount = 0;
     const errors: string[] = [];
     
+    // Try database first
     try {
-      // Delete from database
-      const result = await client.query(`
-        DELETE FROM content_items 
-        WHERE answer IS NULL OR answer = ''
-        RETURNING id
-      `);
-      deletedCount += result.rowCount || 0;
+      await initDatabase();
+      const client = await pool.connect();
+      try {
+        const result = await client.query(`
+          DELETE FROM content_items 
+          WHERE answer IS NULL OR answer = ''
+          RETURNING id
+        `);
+        deletedCount += result.rowCount || 0;
+      } finally {
+        client.release();
+      }
     } catch (dbError) {
       console.warn('Database cleanup failed, trying file system:', dbError);
-    } finally {
-      client.release();
+      // Continue to file system cleanup
     }
     
     // Also clean up file-based content
