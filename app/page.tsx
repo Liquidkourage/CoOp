@@ -120,7 +120,10 @@ export default function Home() {
     setSelectedFormat('');
   }
 
-  async function cleanupNoAnswers() {
+  async function cleanupNoAnswers(e?: React.MouseEvent) {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     if (!confirm('This will permanently delete ALL entries without answers. Are you sure?')) {
       return;
     }
@@ -131,12 +134,14 @@ export default function Home() {
 
     setCleaningUp(true);
     try {
+      console.log('Making POST request to /api/cleanup_no_answers');
       const response = await fetch('/api/cleanup_no_answers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
+      console.log('Response status:', response.status);
 
       const result = await response.json();
 
@@ -239,6 +244,7 @@ export default function Home() {
         <div className="stats" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p>Found {filteredContent.length} content item{filteredContent.length !== 1 ? 's' : ''}</p>
           <button
+            type="button"
             onClick={cleanupNoAnswers}
             disabled={cleaningUp}
             style={{
