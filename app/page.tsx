@@ -297,70 +297,81 @@ export default function Home() {
             <p>No content found. Try adjusting your filters.</p>
           </div>
         ) : (
-          <div className="content-grid">
-            {filteredContent.map((item) => {
-              // Check if title is just a truncated version of description
-              const title = item.metadata.title || '';
-              const description = item.metadata.description || '';
-              const isTitleTruncated = description && title && 
-                (description.startsWith(title) || title.length < 150);
-              const showTitle = !isTitleTruncated && title;
-              
-              return (
-              <div key={item.id} className="content-card">
-                {showTitle && <h3>{title}</h3>}
-                
-                {/* Compact metadata bar */}
-                <div className="meta-bar">
-                  {item.metadata.creator && (
-                    <span className="meta-item">👤 {item.metadata.creator}</span>
-                  )}
-                  {item.metadata.format && (
-                    <span className="meta-item">📄 {item.metadata.format}</span>
-                  )}
-                  {item.metadata.topics && item.metadata.topics.length > 0 && (
-                    <span className="meta-item">
-                      🏷️ {item.metadata.topics.map(topic => (
-                        <span key={topic} className="topic-tag-inline">{topic}</span>
-                      ))}
-                    </span>
-                  )}
-                  {item.metadata.date && (
-                    <span className="meta-item">📅 {new Date(item.metadata.date).toLocaleDateString()}</span>
-                  )}
-                </div>
-
-                {/* Show description (which may contain the question) */}
-                {description && (
-                  <div className="description">{description}</div>
-                )}
-                
-                {/* Show title if it's different from description */}
-                {!description && title && (
-                  <div className="description">{title}</div>
-                )}
-
-                {item.files.length > 0 && (
-                  <div className="files">
-                    {item.files.map((file, idx) => {
-                      const fileName = file.split('/').pop() || file;
-                      const filePath = file.startsWith('/') ? file.slice(1) : file;
-                      return (
-                        <a
-                          key={idx}
-                          href={`/api/files/${filePath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Download {fileName}
-                        </a>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              );
-            })}
+          <div className="content-table-container">
+            <table className="content-table">
+              <thead>
+                <tr>
+                  <th>Question/Content</th>
+                  <th>Category</th>
+                  <th>Format</th>
+                  <th>Creator</th>
+                  <th>Date</th>
+                  {filteredContent.some(item => item.files.length > 0) && <th>Files</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredContent.map((item) => {
+                  const title = item.metadata.title || '';
+                  const description = item.metadata.description || '';
+                  const displayText = description || title || 'Untitled';
+                  
+                  return (
+                    <tr key={item.id}>
+                      <td className="question-cell">
+                        <div className="question-text" title={displayText}>
+                          {displayText.length > 150 ? `${displayText.substring(0, 150)}...` : displayText}
+                        </div>
+                      </td>
+                      <td>
+                        {item.metadata.topics && item.metadata.topics.length > 0 ? (
+                          <div className="topics-list">
+                            {item.metadata.topics.map(topic => (
+                              <span key={topic} className="topic-tag">{topic}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td>{item.metadata.format || <span className="text-muted">—</span>}</td>
+                      <td>{item.metadata.creator || <span className="text-muted">—</span>}</td>
+                      <td>
+                        {item.metadata.date ? (
+                          new Date(item.metadata.date).toLocaleDateString()
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      {filteredContent.some(item => item.files.length > 0) && (
+                        <td>
+                          {item.files.length > 0 ? (
+                            <div className="files-list">
+                              {item.files.map((file, idx) => {
+                                const fileName = file.split('/').pop() || file;
+                                const filePath = file.startsWith('/') ? file.slice(1) : file;
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={`/api/files/${filePath}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="file-link"
+                                  >
+                                    📄
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </main>
