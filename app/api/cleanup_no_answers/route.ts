@@ -13,7 +13,8 @@ export async function GET() {
   });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  console.log('Cleanup POST endpoint called');
   try {
     let deletedCount = 0;
     const errors: string[] = [];
