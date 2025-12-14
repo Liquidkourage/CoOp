@@ -22,6 +22,7 @@ export async function initDatabase() {
         difficulty TEXT,
         types TEXT[],
         description TEXT,
+        answer TEXT,
         language TEXT DEFAULT 'en',
         license TEXT,
         source TEXT,
@@ -31,6 +32,12 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Add answer column if it doesn't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS answer TEXT
     `);
 
     await client.query(`
@@ -56,6 +63,7 @@ export interface ContentRow {
   difficulty: string | null;
   types: string[] | null;
   description: string | null;
+  answer: string | null;
   language: string | null;
   license: string | null;
   source: string | null;
@@ -89,8 +97,8 @@ export async function insertContent(metadata: {
     const result = await client.query(`
       INSERT INTO content_items (
         title, creator, date, topics, format, question_count, difficulty,
-        types, description, language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        types, description, answer, language, license, source, tags, files, file_paths
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `, [
       metadata.title || null,
@@ -102,6 +110,7 @@ export async function insertContent(metadata: {
       metadata.difficulty || null,
       metadata.types || [],
       metadata.description || null,
+      metadata.answer || null,
       metadata.language || 'en',
       metadata.license || null,
       metadata.source || null,
