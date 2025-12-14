@@ -131,7 +131,7 @@ export default function Home() {
 
     setCleaningUp(true);
     try {
-      const response = await fetch('/api/cleanup-no-answers', {
+      const response = await fetch('/api/cleanup_no_answers', {
         method: 'POST',
       });
 
