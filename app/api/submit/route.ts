@@ -21,13 +21,6 @@ export async function POST(request: NextRequest) {
     const metadata = JSON.parse(metadataStr);
     const files = formData.getAll('files') as File[];
 
-    if (files.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one file is required' },
-        { status: 400 }
-      );
-    }
-
     const creatorName = metadata.creator?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'unknown';
     const baseDir = path.join(process.cwd(), 'uploads', creatorName);
     
@@ -38,15 +31,18 @@ export async function POST(request: NextRequest) {
     const savedFiles: string[] = [];
     const filePaths: string[] = [];
     
-    for (const file of files) {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const fileName = file.name;
-      const filePath = path.join(baseDir, fileName);
-      
-      fs.writeFileSync(filePath, buffer);
-      savedFiles.push(fileName);
-      filePaths.push(`uploads/${creatorName}/${fileName}`);
+    // Files are optional (for CSV imports)
+    if (files.length > 0) {
+      for (const file of files) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const fileName = file.name;
+        const filePath = path.join(baseDir, fileName);
+        
+        fs.writeFileSync(filePath, buffer);
+        savedFiles.push(fileName);
+        filePaths.push(`uploads/${creatorName}/${fileName}`);
+      }
     }
 
     // Save to database
@@ -92,13 +88,16 @@ export async function POST(request: NextRequest) {
       }
 
       const savedFiles: string[] = [];
-      for (const file of files) {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const fileName = file.name;
-        const filePath = path.join(baseDir, fileName);
-        fs.writeFileSync(filePath, buffer);
-        savedFiles.push(fileName);
+      // Files are optional (for CSV imports)
+      if (files.length > 0) {
+        for (const file of files) {
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const fileName = file.name;
+          const filePath = path.join(baseDir, fileName);
+          fs.writeFileSync(filePath, buffer);
+          savedFiles.push(fileName);
+        }
       }
 
       metadata.files = savedFiles;
