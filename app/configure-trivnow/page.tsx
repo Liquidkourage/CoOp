@@ -44,6 +44,8 @@ export default function ConfigureTrivNowPage() {
               } else if (lower === 'round') {
                 // Could be used for grouping/organization
                 autoMapping[header] = 'description';
+              } else if (lower === 'correctanswer' || lower === 'correct_answer') {
+                autoMapping[header] = 'answer';
               }
               // General mappings (fallback)
               else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
@@ -149,6 +151,7 @@ export default function ConfigureTrivNowPage() {
                         <option value="difficulty">Difficulty</option>
                         <option value="types">Types</option>
                         <option value="description">Description</option>
+                        <option value="answer">Answer / Correct Answer</option>
                       </select>
                     </div>
                   ))}

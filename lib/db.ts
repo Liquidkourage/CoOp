@@ -76,6 +76,7 @@ export async function insertContent(metadata: {
   difficulty?: string;
   types?: string[];
   description?: string;
+  answer?: string;
   language?: string;
   license?: string;
   source?: string;

@@ -11,6 +11,8 @@ export interface ContentMetadata {
   difficulty?: string;
   types?: string[];
   description?: string;
+  answer?: string;
+  correctAnswer?: string;
   language?: string;
   license?: string;
   source?: string;

@@ -194,6 +194,11 @@ export default function ImportPage() {
                 } else if (mappedField === 'creator') {
                   // Use first non-empty creator value
                   metadata.creator = values.find(v => v) || '';
+                } else if (mappedField === 'answer') {
+                  // Store answer in both answer and correctAnswer fields
+                  const answerValue = values[0];
+                  metadata.answer = answerValue;
+                  metadata.correctAnswer = answerValue;
                 } else {
                   // For other fields, use the first value (or concatenate if it makes sense)
                   metadata[mappedField] = values[0];
@@ -435,6 +440,7 @@ export default function ImportPage() {
                         <option value="difficulty">Difficulty</option>
                         <option value="types">Types (comma-separated)</option>
                         <option value="description">Description</option>
+                        <option value="answer">Answer / Correct Answer</option>
                       </select>
                     </div>
                   ))}

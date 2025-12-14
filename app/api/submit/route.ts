@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       difficulty: metadata.difficulty,
       types: metadata.types,
       description: metadata.description,
+      answer: metadata.correctAnswer || metadata.answer,
       language: metadata.language,
       license: metadata.license,
       source: metadata.source,

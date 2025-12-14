@@ -302,6 +302,7 @@ export default function Home() {
               <thead>
                 <tr>
                   <th>Question/Content</th>
+                  <th>Answer</th>
                   <th>Category</th>
                   <th>Format</th>
                   <th>Creator</th>
@@ -314,6 +315,7 @@ export default function Home() {
                   const title = item.metadata.title || '';
                   const description = item.metadata.description || '';
                   const displayText = description || title || 'Untitled';
+                  const answer = item.metadata.correctAnswer || item.metadata.answer || '';
                   
                   return (
                     <tr key={item.id}>
@@ -321,6 +323,15 @@ export default function Home() {
                         <div className="question-text" title={displayText}>
                           {displayText.length > 150 ? `${displayText.substring(0, 150)}...` : displayText}
                         </div>
+                      </td>
+                      <td className="answer-cell">
+                        {answer ? (
+                          <div className="answer-text" title={answer}>
+                            {answer.length > 100 ? `${answer.substring(0, 100)}...` : answer}
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                       <td>
                         {item.metadata.topics && item.metadata.topics.length > 0 ? (

@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
           difficulty: row.difficulty || undefined,
           types: row.types || undefined,
           description: row.description || undefined,
+          answer: (row as any).answer || undefined,
+          correctAnswer: (row as any).answer || undefined,
           language: row.language || undefined,
           license: row.license || undefined,
           source: row.source || undefined,

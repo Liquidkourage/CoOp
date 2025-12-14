@@ -164,6 +164,16 @@ a:hover {
   color: #333;
 }
 
+.answer-cell {
+  max-width: 250px;
+}
+
+.answer-text {
+  line-height: 1.5;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
 .topics-list {
   display: flex;
   flex-wrap: wrap;
