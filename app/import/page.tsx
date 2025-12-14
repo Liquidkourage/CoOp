@@ -59,12 +59,16 @@ export default function ImportPage() {
               );
             setIsTrivnowFormat(!!isTrivnow);
             
-            // Use TrivNow mapping if detected, otherwise use default mapping
+            // Start with TrivNow config mapping if available, otherwise empty
             const mapping: Record<string, string> = isTrivnow && config.columnMapping 
               ? { ...config.columnMapping }
               : {};
             
+            // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
             headers.forEach(header => {
+              // Skip if already mapped (preserves TrivNow config mappings)
+              if (mapping[header]) return;
+              
               const lower = header.toLowerCase().trim();
               if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
                 mapping[header] = 'title';
@@ -84,34 +88,10 @@ export default function ImportPage() {
                 mapping[header] = 'description';
               } else if (lower.includes('question') && lower.includes('type')) {
                 mapping[header] = 'types';
+              } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
+                mapping[header] = 'answer';
               }
             });
-            
-            // If not TrivNow format, use default auto-mapping
-            if (!isTrivnow) {
-              headers.forEach(header => {
-                const lower = header.toLowerCase().trim();
-                if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                  mapping[header] = 'title';
-                } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
-                  mapping[header] = 'creator';
-                } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
-                  mapping[header] = 'date';
-                } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject') || lower.includes('tag')) {
-                  mapping[header] = 'topics';
-                } else if (lower.includes('format') || (lower.includes('type') && !lower.includes('question'))) {
-                  mapping[header] = 'format';
-                } else if ((lower.includes('question') && lower.includes('count')) || lower.includes('questions') || lower === 'count') {
-                  mapping[header] = 'questionCount';
-                } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
-                  mapping[header] = 'difficulty';
-                } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
-                  mapping[header] = 'description';
-                } else if (lower.includes('question') && lower.includes('type')) {
-                  mapping[header] = 'types';
-                }
-              });
-            }
             
             setColumnMapping(mapping);
           }
