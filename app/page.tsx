@@ -298,38 +298,46 @@ export default function Home() {
           </div>
         ) : (
           <div className="content-grid">
-            {filteredContent.map((item) => (
+            {filteredContent.map((item) => {
+              // Check if title is just a truncated version of description
+              const title = item.metadata.title || '';
+              const description = item.metadata.description || '';
+              const isTitleTruncated = description && title && 
+                (description.startsWith(title) || title.length < 150);
+              const showTitle = !isTitleTruncated && title;
+              
+              return (
               <div key={item.id} className="content-card">
-                <h3>{item.metadata.title || 'Untitled'}</h3>
+                {showTitle && <h3>{title}</h3>}
                 
-                <div className="meta">
+                {/* Compact metadata bar */}
+                <div className="meta-bar">
                   {item.metadata.creator && (
-                    <div><strong>Creator:</strong> {item.metadata.creator}</div>
-                  )}
-                  {item.metadata.date && (
-                    <div><strong>Date:</strong> {item.metadata.date}</div>
-                  )}
-                  {item.metadata.questionCount && (
-                    <div><strong>Questions:</strong> {item.metadata.questionCount}</div>
-                  )}
-                  {item.metadata.difficulty && (
-                    <div><strong>Difficulty:</strong> {item.metadata.difficulty}</div>
+                    <span className="meta-item">👤 {item.metadata.creator}</span>
                   )}
                   {item.metadata.format && (
-                    <div><strong>Format:</strong> {item.metadata.format}</div>
+                    <span className="meta-item">📄 {item.metadata.format}</span>
+                  )}
+                  {item.metadata.topics && item.metadata.topics.length > 0 && (
+                    <span className="meta-item">
+                      🏷️ {item.metadata.topics.map(topic => (
+                        <span key={topic} className="topic-tag-inline">{topic}</span>
+                      ))}
+                    </span>
+                  )}
+                  {item.metadata.date && (
+                    <span className="meta-item">📅 {new Date(item.metadata.date).toLocaleDateString()}</span>
                   )}
                 </div>
 
-                {item.metadata.topics && item.metadata.topics.length > 0 && (
-                  <div className="topics">
-                    {item.metadata.topics.map(topic => (
-                      <span key={topic} className="topic-tag">{topic}</span>
-                    ))}
-                  </div>
+                {/* Show description (which may contain the question) */}
+                {description && (
+                  <div className="description">{description}</div>
                 )}
-
-                {item.metadata.description && (
-                  <div className="description">{item.metadata.description}</div>
+                
+                {/* Show title if it's different from description */}
+                {!description && title && (
+                  <div className="description">{title}</div>
                 )}
 
                 {item.files.length > 0 && (
