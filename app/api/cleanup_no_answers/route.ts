@@ -3,6 +3,8 @@ import { initDatabase, pool } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     let deletedCount = 0;
