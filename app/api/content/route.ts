@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
             questionCount: row.question_count || undefined,
             difficulty: row.difficulty || undefined,
             types: row.types || undefined,
-            description: row.description || undefined,
+            question: row.description || undefined,
+            description: row.description || undefined, // Backward compatibility
             answer: row.answer || undefined,
             correctAnswer: row.answer || undefined,
             language: row.language || undefined,
@@ -112,7 +113,8 @@ export async function GET(request: NextRequest) {
         fileContent = fileContent.filter(item => {
           const { metadata } = item;
           if (metadata.title?.toLowerCase().includes(query)) return true;
-          if (metadata.description?.toLowerCase().includes(query)) return true;
+          if (metadata.question?.toLowerCase().includes(query)) return true;
+          if (metadata.description?.toLowerCase().includes(query)) return true; // Backward compatibility
           if (metadata.creator?.toLowerCase().includes(query)) return true;
           if (metadata.topics?.some(topic => topic.toLowerCase().includes(query))) return true;
           return false;

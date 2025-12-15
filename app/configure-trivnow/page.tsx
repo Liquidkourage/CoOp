@@ -36,14 +36,14 @@ export default function ConfigureTrivNowPage() {
               } else if (lower === 'source') {
                 autoMapping[header] = 'creator';
               } else if (lower === 'question') {
-                autoMapping[header] = 'description';
+                autoMapping[header] = 'question';
               } else if (lower === 'note') {
-                autoMapping[header] = 'description';
+                autoMapping[header] = 'question';
               } else if (lower === 'format') {
                 autoMapping[header] = 'format';
               } else if (lower === 'round') {
                 // Could be used for grouping/organization
-                autoMapping[header] = 'description';
+                autoMapping[header] = 'question';
               } else if (lower === 'correctanswer' || lower === 'correct_answer') {
                 autoMapping[header] = 'answer';
               }
@@ -63,7 +63,7 @@ export default function ConfigureTrivNowPage() {
               } else if (lower.includes('difficulty') || lower.includes('level')) {
                 autoMapping[header] = 'difficulty';
               } else if (lower.includes('description') || lower.includes('desc')) {
-                autoMapping[header] = 'description';
+                autoMapping[header] = 'question';
               }
             });
             setMapping(autoMapping);
@@ -150,7 +150,8 @@ export default function ConfigureTrivNowPage() {
                         <option value="questionCount">Question Count</option>
                         <option value="difficulty">Difficulty</option>
                         <option value="types">Types</option>
-                        <option value="description">Description</option>
+                        <option value="question">Question</option>
+                        <option value="description">Description (deprecated)</option>
                         <option value="answer">Answer / Correct Answer</option>
                       </select>
                     </div>

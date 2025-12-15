@@ -10,7 +10,8 @@ export interface ContentMetadata {
   questionCount?: number;
   difficulty?: string;
   types?: string[];
-  description?: string;
+  question?: string;
+  description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
   correctAnswer?: string;
   language?: string;
@@ -101,7 +102,8 @@ export function searchContent(query: string, content: ContentItem[]): ContentIte
     const { metadata } = item;
     
     if (metadata.title?.toLowerCase().includes(lowerQuery)) return true;
-    if (metadata.description?.toLowerCase().includes(lowerQuery)) return true;
+    if (metadata.question?.toLowerCase().includes(lowerQuery)) return true;
+    if (metadata.description?.toLowerCase().includes(lowerQuery)) return true; // Backward compatibility
     if (metadata.creator?.toLowerCase().includes(lowerQuery)) return true;
     if (metadata.topics?.some(topic => topic.toLowerCase().includes(lowerQuery))) return true;
     if (metadata.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))) return true;

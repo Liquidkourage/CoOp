@@ -14,7 +14,8 @@ export default function SubmitPage() {
     questionCount: '',
     difficulty: '',
     types: [] as string[],
-    description: '',
+    question: '',
+    description: '', // Deprecated, kept for backward compatibility
   });
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -46,8 +47,8 @@ export default function SubmitPage() {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.description.trim()) {
-      setError('Question text/description is required');
+    if (!formData.question.trim()) {
+      setError('Question text is required');
       return;
     }
     if (!formData.creator.trim()) {
@@ -70,12 +71,13 @@ export default function SubmitPage() {
         questionCount: formData.questionCount ? parseInt(formData.questionCount) : undefined,
         difficulty: formData.difficulty || undefined,
         types: formData.types,
-        description: formData.description.trim(), // Required
+        question: formData.question.trim(), // Required
+        description: formData.question.trim(), // Backward compatibility
       };
       
-      // If no title provided, use description as title (for display purposes)
+      // If no title provided, use question as title (for display purposes)
       if (!metadata.title) {
-        metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+        metadata.title = metadata.question.substring(0, 100) + (metadata.question.length > 100 ? '...' : '');
       }
       
       formDataToSend.append('metadata', JSON.stringify(metadata));
@@ -318,12 +320,12 @@ export default function SubmitPage() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Question Text / Description *
+                Question *
               </label>
               <textarea
                 required
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formData.question}
+                onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -336,7 +338,7 @@ export default function SubmitPage() {
                 placeholder="Enter your trivia question here..."
               />
               <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                This is the actual question text. Required for all content.
+                The actual question text. Required for all content.
               </p>
             </div>
 

@@ -83,7 +83,8 @@ export async function insertContent(metadata: {
   questionCount?: number;
   difficulty?: string;
   types?: string[];
-  description?: string;
+  question?: string;
+  description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
   language?: string;
   license?: string;
@@ -109,7 +110,7 @@ export async function insertContent(metadata: {
       metadata.questionCount || null,
       metadata.difficulty || null,
       metadata.types || [],
-      metadata.description || null,
+      metadata.question || metadata.description || null, // Map 'question' to 'description' column
       metadata.answer || null,
       metadata.language || 'en',
       metadata.license || null,
@@ -144,6 +145,7 @@ export async function searchContent(query: string) {
         LOWER(title) LIKE $1 OR
         LOWER(creator) LIKE $1 OR
         LOWER(description) LIKE $1 OR
+        LOWER(COALESCE(description, '')) LIKE $1 OR
         EXISTS (SELECT 1 FROM unnest(topics) AS topic WHERE LOWER(topic) LIKE $1) OR
         EXISTS (SELECT 1 FROM unnest(tags) AS tag WHERE LOWER(tag) LIKE $1)
       ORDER BY created_at DESC

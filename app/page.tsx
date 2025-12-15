@@ -15,7 +15,8 @@ interface ContentItem {
     questionCount?: number;
     difficulty?: string;
     types?: string[];
-    description?: string;
+    question?: string;
+    description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
     answer?: string;
   };
   files: string[];
@@ -162,7 +163,7 @@ export default function HomePage() {
   const renderQAPairs = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
-      const q = item.metadata.description || item.metadata.title || 'No question';
+      const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
       const a = item.metadata.answer || 'No answer provided';
       return `Q${idx + 1}: ${q}\nA${idx + 1}: ${a}\n`;
     }).join('\n');
@@ -201,7 +202,7 @@ export default function HomePage() {
           {itemsToShow.map((item, idx) => (
             <div key={item.id} style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: idx < itemsToShow.length - 1 ? '1px solid #dee2e6' : 'none' }}>
               <div style={{ fontWeight: 'bold', color: '#0066cc', marginBottom: '8px' }}>
-                Q{idx + 1}: {item.metadata.description || item.metadata.title || 'No question'}
+                Q{idx + 1}: {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
               <div style={{ color: '#28a745', marginLeft: '20px' }}>
                 A{idx + 1}: {item.metadata.answer || 'No answer provided'}
@@ -221,7 +222,7 @@ export default function HomePage() {
   const renderQuizFormat = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
-      const q = item.metadata.description || item.metadata.title || 'No question';
+      const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
       const a = item.metadata.answer || 'No answer provided';
       return `${idx + 1}. ${q}\n   Answer: ${a}\n`;
     }).join('\n');
@@ -259,7 +260,7 @@ export default function HomePage() {
           {itemsToShow.map((item, idx) => (
             <div key={item.id} style={{ marginBottom: '25px' }}>
               <div style={{ fontWeight: '600', marginBottom: '10px' }}>
-                {idx + 1}. {item.metadata.description || item.metadata.title || 'No question'}
+                {idx + 1}. {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
               <div style={{ marginLeft: '30px', color: '#555', fontStyle: 'italic' }}>
                 Answer: {item.metadata.answer || 'No answer provided'}
@@ -276,7 +277,7 @@ export default function HomePage() {
     const csv = [
       ['Question', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
       ...itemsToShow.map(item => [
-        (item.metadata.description || item.metadata.title || '').replace(/\t/g, ' '),
+        (item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/\t/g, ' '),
         (item.metadata.answer || '').replace(/\t/g, ' '),
         (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
         (item.metadata.creator || '').replace(/\t/g, ' '),
@@ -325,7 +326,7 @@ export default function HomePage() {
             <tbody>
               {itemsToShow.map((item, idx) => (
                 <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8f9fa' }}>
-                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.description || item.metadata.title || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.question || item.metadata.description || item.metadata.title || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6', color: '#28a745', fontWeight: '500' }}>{item.metadata.answer || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.topics?.join(', ') || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.creator || '-'}</td>
@@ -343,7 +344,7 @@ export default function HomePage() {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
       let output = `--- Question ${idx + 1} ---\n`;
-      output += `Question: ${item.metadata.description || item.metadata.title || 'No question'}\n`;
+      output += `Question: ${item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}\n`;
       output += `Answer: ${item.metadata.answer || 'No answer provided'}\n`;
       if (item.metadata.topics?.length) output += `Topics: ${item.metadata.topics.join(', ')}\n`;
       if (item.metadata.creator) output += `Creator: ${item.metadata.creator}\n`;
@@ -441,7 +442,7 @@ export default function HomePage() {
             <button
               onClick={() => {
                 const text = itemsToShow.map(item => 
-                  `${item.metadata.description || item.metadata.title || 'No question'}\n${item.metadata.answer || 'No answer'}`
+                  `${item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}\n${item.metadata.answer || 'No answer'}`
                 ).join('\n\n---\n\n');
                 copyToClipboard(text);
               }}
@@ -501,7 +502,7 @@ export default function HomePage() {
                     fontSize: '18px',
                     fontWeight: '500'
                   }}>
-                    {item.metadata.description || item.metadata.title || 'No question'}
+                    {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
                   </div>
                   <div style={{
                     position: 'absolute',
@@ -573,7 +574,7 @@ export default function HomePage() {
               onClick={() => {
                 const selected = getSelectedContent();
                 const text = selected.map(item => 
-                  `${item.metadata.description || item.metadata.title || 'No question'}\nAnswer: ${item.metadata.answer || 'No answer'}\n`
+                  `${item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}\nAnswer: ${item.metadata.answer || 'No answer'}\n`
                 ).join('\n---\n\n');
                 copyToClipboard(text);
               }}
@@ -634,7 +635,7 @@ export default function HomePage() {
                   </div>
                 )}
                 <div style={{ fontWeight: '600', marginBottom: '8px' }}>
-                  {item.metadata.description || item.metadata.title || 'No question text'}
+                  {item.metadata.question || item.metadata.description || item.metadata.title || 'No question text'}
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>
                   Answer: {item.metadata.answer || 'No answer'}
@@ -657,7 +658,7 @@ export default function HomePage() {
   const renderDocument = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
-      let output = `${idx + 1}. ${item.metadata.description || item.metadata.title || 'No question'}\n`;
+      let output = `${idx + 1}. ${item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}\n`;
       output += `   Answer: ${item.metadata.answer || 'No answer provided'}\n`;
       if (item.metadata.topics?.length) output += `   Topics: ${item.metadata.topics.join(', ')}\n`;
       return output + '\n';
@@ -699,7 +700,7 @@ export default function HomePage() {
           {itemsToShow.map((item, idx) => (
             <div key={item.id} style={{ marginBottom: '20px', paddingBottom: '15px', borderBottom: idx < itemsToShow.length - 1 ? '1px solid #eee' : 'none' }}>
               <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '15px' }}>
-                {idx + 1}. {item.metadata.description || item.metadata.title || 'No question'}
+                {idx + 1}. {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
               <div style={{ marginLeft: '25px', color: '#555', fontSize: '13px' }}>
                 Answer: <span style={{ fontStyle: 'italic' }}>{item.metadata.answer || 'No answer provided'}</span>
@@ -719,7 +720,7 @@ export default function HomePage() {
   const renderStructured = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const json = JSON.stringify(itemsToShow.map(item => ({
-      question: item.metadata.description || item.metadata.title || 'No question',
+      question: item.metadata.question || item.metadata.description || item.metadata.title || 'No question',
       answer: item.metadata.answer || 'No answer',
       topics: item.metadata.topics || [],
       creator: item.metadata.creator || '',
@@ -729,7 +730,7 @@ export default function HomePage() {
     const csv = [
       ['Question', 'Answer', 'Topics', 'Creator', 'Date'],
       ...itemsToShow.map(item => [
-        `"${(item.metadata.description || item.metadata.title || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
@@ -1279,11 +1280,11 @@ export default function HomePage() {
                         </div>
                       )}
                     </div>
-                    {item.metadata.description && (
+                    {(item.metadata.question || item.metadata.description) && (
                       <div className="description">
-                        {item.metadata.description.length > 150
-                          ? `${item.metadata.description.substring(0, 150)}...`
-                          : item.metadata.description}
+                        {((item.metadata.question || item.metadata.description) || '').length > 150
+                          ? `${(item.metadata.question || item.metadata.description || '').substring(0, 150)}...`
+                          : (item.metadata.question || item.metadata.description)}
                       </div>
                     )}
                     {item.metadata.topics && item.metadata.topics.length > 0 && (

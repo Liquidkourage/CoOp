@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       questionCount: metadata.questionCount,
       difficulty: metadata.difficulty,
       types: metadata.types,
-      description: metadata.description,
+      question: metadata.question || metadata.description, // Support both 'question' and 'description'
+      description: metadata.description || metadata.question, // Backward compatibility
       answer: metadata.correctAnswer || metadata.answer,
       language: metadata.language,
       license: metadata.license,

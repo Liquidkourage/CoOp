@@ -281,9 +281,11 @@ export default function ImportPage() {
             // Combine all type values and split by comma
             const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
             metadata.types = [...new Set(allTypes)]; // Remove duplicates
-          } else if (mappedField === 'description') {
-            // Concatenate multiple description fields with line breaks
-            metadata.description = values.join('\n\n');
+          } else if (mappedField === 'description' || mappedField === 'question') {
+            // Concatenate multiple question fields with line breaks
+            const questionText = values.join('\n\n');
+            metadata.question = questionText;
+            metadata.description = questionText; // Backward compatibility
           } else if (mappedField === 'creator') {
             // Use first non-empty creator value
             metadata.creator = values.find(v => v) || '';
@@ -313,16 +315,18 @@ export default function ImportPage() {
             }
           }
           
-          // If still no title, try to use description if available
-          if (!metadata.title && metadata.description) {
-            metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+          // If still no title, try to use question if available
+          if (!metadata.title && (metadata.question || metadata.description)) {
+            const questionText = metadata.question || metadata.description || '';
+            metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
           }
           
-          // Title is optional - if still no title, use description or question text as fallback
+          // Title is optional - if still no title, use question text as fallback
           if (!metadata.title) {
-            if (metadata.description) {
-              // Use description as title (truncated)
-              metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+            if (metadata.question || metadata.description) {
+              // Use question as title (truncated)
+              const questionText = metadata.question || metadata.description || '';
+              metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
             } else {
               // Last resort: use first available text field
               const firstTextValue = Object.values(row).find(v => v && v.toString().trim());
