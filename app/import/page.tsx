@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 interface ImportResult {
   success: boolean;
@@ -21,52 +23,86 @@ export default function ImportPage() {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [showDebug, setShowDebug] = useState(false);
   const [trivnowConfig, setTrivnowConfig] = useState<any>(null);
+  const [excelConfig, setExcelConfig] = useState<any>(null);
   const [isTrivnowFormat, setIsTrivnowFormat] = useState(false);
+  const [isExcelFormat, setIsExcelFormat] = useState(false);
+  const [fileType, setFileType] = useState<'csv' | 'excel' | null>(null);
   const [defaultCreator, setDefaultCreator] = useState<string>('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
       setResult(null);
       setPreview([]);
       
-      // Check for TrivNow configuration
-      const savedConfig = localStorage.getItem('trivnow-config');
-      let config = null;
-      if (savedConfig) {
+      // Detect file type
+      const fileName = selectedFile.name.toLowerCase();
+      const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+      const isCsv = fileName.endsWith('.csv');
+      setFileType(isExcel ? 'excel' : isCsv ? 'csv' : null);
+      
+      // Check for configurations
+      const savedTrivnowConfig = localStorage.getItem('trivnow-config');
+      const savedExcelConfig = localStorage.getItem('excel-config');
+      
+      let trivnowConfig = null;
+      let excelConfig = null;
+      
+      if (savedTrivnowConfig) {
         try {
-          config = JSON.parse(savedConfig);
-          setTrivnowConfig(config);
+          trivnowConfig = JSON.parse(savedTrivnowConfig);
+          setTrivnowConfig(trivnowConfig);
         } catch (e) {
           console.error('Failed to parse TrivNow config:', e);
         }
       }
       
-      Papa.parse(selectedFile, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.data && results.data.length > 0) {
-            setPreview(results.data.slice(0, 5) as any[]);
-            const headers = Object.keys(results.data[0] as any);
+      if (savedExcelConfig) {
+        try {
+          excelConfig = JSON.parse(savedExcelConfig);
+          setExcelConfig(excelConfig);
+        } catch (e) {
+          console.error('Failed to parse Excel config:', e);
+        }
+      }
+      
+      if (isExcel) {
+        // Handle Excel file
+        try {
+          const arrayBuffer = await selectedFile.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const firstSheetName = excelConfig?.sheetName || workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (jsonData.length > 0) {
+            const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
+            const rows = jsonData.slice(1).map(row => {
+              const obj: any = {};
+              headers.forEach((header, idx) => {
+                obj[header] = row[idx] !== undefined ? row[idx] : '';
+              });
+              return obj;
+            }).filter(row => Object.values(row).some(v => v !== ''));
             
-            // Check if this looks like TrivNow format
+            setPreview(rows.slice(0, 5));
+            
+            // Check if this looks like configured Excel format
             const headerLower = headers.map(h => h.toLowerCase().trim());
-            const isTrivnow = config && config.detectionPatterns && 
-              config.detectionPatterns.some((pattern: string) => 
+            const isExcelFormat = excelConfig && excelConfig.detectionPatterns && 
+              excelConfig.detectionPatterns.some((pattern: string) => 
                 headerLower.includes(pattern.toLowerCase().trim())
               );
-            setIsTrivnowFormat(!!isTrivnow);
+            setIsExcelFormat(!!isExcelFormat);
             
-            // Start with TrivNow config mapping if available, otherwise empty
-            const mapping: Record<string, string> = isTrivnow && config.columnMapping 
-              ? { ...config.columnMapping }
+            // Start with Excel config mapping if available, otherwise empty
+            const mapping: Record<string, string> = isExcelFormat && excelConfig.columnMapping 
+              ? { ...excelConfig.columnMapping }
               : {};
             
-            // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
+            // Auto-map fields
             headers.forEach(header => {
-              // Skip if already mapped (preserves TrivNow config mappings)
               if (mapping[header]) return;
               
               const lower = header.toLowerCase().trim();
@@ -95,16 +131,200 @@ export default function ImportPage() {
             
             setColumnMapping(mapping);
           }
-        },
-        error: (error) => {
+        } catch (error) {
           setResult({
             success: false,
             imported: 0,
-            errors: [error.message]
+            errors: [error instanceof Error ? error.message : 'Failed to read Excel file']
           });
         }
-      });
+      } else {
+        // Handle CSV file
+        Papa.parse(selectedFile, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.data && results.data.length > 0) {
+              setPreview(results.data.slice(0, 5) as any[]);
+              const headers = Object.keys(results.data[0] as any);
+              
+              // Check if this looks like TrivNow format
+              const headerLower = headers.map(h => h.toLowerCase().trim());
+              const isTrivnow = trivnowConfig && trivnowConfig.detectionPatterns && 
+                trivnowConfig.detectionPatterns.some((pattern: string) => 
+                  headerLower.includes(pattern.toLowerCase().trim())
+                );
+              setIsTrivnowFormat(!!isTrivnow);
+              
+              // Start with TrivNow config mapping if available, otherwise empty
+              const mapping: Record<string, string> = isTrivnow && trivnowConfig.columnMapping 
+                ? { ...trivnowConfig.columnMapping }
+                : {};
+              
+              // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
+              headers.forEach(header => {
+                // Skip if already mapped (preserves TrivNow config mappings)
+                if (mapping[header]) return;
+                
+                const lower = header.toLowerCase().trim();
+                if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
+                  mapping[header] = 'title';
+                } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
+                  mapping[header] = 'creator';
+                } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
+                  mapping[header] = 'date';
+                } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject') || lower.includes('tag')) {
+                  mapping[header] = 'topics';
+                } else if (lower.includes('format') || (lower.includes('type') && !lower.includes('question'))) {
+                  mapping[header] = 'format';
+                } else if ((lower.includes('question') && lower.includes('count')) || lower.includes('questions') || lower === 'count') {
+                  mapping[header] = 'questionCount';
+                } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
+                  mapping[header] = 'difficulty';
+                } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
+                  mapping[header] = 'description';
+                } else if (lower.includes('question') && lower.includes('type')) {
+                  mapping[header] = 'types';
+                } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
+                  mapping[header] = 'answer';
+                }
+              });
+              
+              setColumnMapping(mapping);
+            }
+          },
+          error: (error) => {
+            setResult({
+              success: false,
+              imported: 0,
+              errors: [error.message]
+            });
+          }
+        });
+      }
     }
+  };
+
+  const processRows = async (rows: any[]) => {
+    const errors: string[] = [];
+    let imported = 0;
+    const debugInfo: any = {
+      totalRows: rows.length,
+      firstRow: rows[0],
+      columnMapping: columnMapping,
+      availableColumns: rows[0] ? Object.keys(rows[0]) : [],
+      isTrivnowFormat: isTrivnowFormat,
+      isExcelFormat: isExcelFormat,
+      fileType: fileType
+    };
+
+    // Import each row as a separate content item (one row = one content item)
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const metadata: any = {};
+        
+        // First pass: collect all values for each mapped field
+        const fieldValues: Record<string, string[]> = {};
+        
+        Object.keys(columnMapping).forEach(col => {
+          const mappedField = columnMapping[col];
+          if (!mappedField) return;
+          
+          const value = row[col];
+          
+          if (value !== undefined && value !== null && value.toString().trim()) {
+            if (!fieldValues[mappedField]) {
+              fieldValues[mappedField] = [];
+            }
+            fieldValues[mappedField].push(value.toString().trim());
+          }
+        });
+        
+        // Process collected values
+        Object.keys(fieldValues).forEach(mappedField => {
+          const values = fieldValues[mappedField];
+          
+          if (mappedField === 'topics') {
+            // Combine all topic values and split by comma
+            const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+            metadata.topics = [...new Set(allTopics)]; // Remove duplicates
+          } else if (mappedField === 'questionCount') {
+            // Use the first valid number
+            const num = parseInt(values[0]) || undefined;
+            if (num) metadata.questionCount = num;
+          } else if (mappedField === 'types') {
+            // Combine all type values and split by comma
+            const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+            metadata.types = [...new Set(allTypes)]; // Remove duplicates
+          } else if (mappedField === 'description') {
+            // Concatenate multiple description fields with line breaks
+            metadata.description = values.join('\n\n');
+          } else if (mappedField === 'creator') {
+            // Use first non-empty creator value
+            metadata.creator = values.find(v => v) || '';
+          } else if (mappedField === 'answer') {
+            // Store answer in both answer and correctAnswer fields
+            const answerValue = values[0];
+            metadata.answer = answerValue;
+            metadata.correctAnswer = answerValue;
+          } else {
+            // For other fields, use the first value (or concatenate if it makes sense)
+            metadata[mappedField] = values[0];
+          }
+        });
+
+        // Generate title from question if not mapped
+        if (!metadata.title) {
+          if ((isTrivnowFormat || isExcelFormat) && row['question']) {
+            // Use first part of question as title
+            const questionText = row['question'].toString().substring(0, 100);
+            metadata.title = questionText + (questionText.length >= 100 ? '...' : '');
+          } else {
+            const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
+            const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
+            errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
+            continue;
+          }
+        }
+
+        // Use default creator if no creator is mapped
+        if (!metadata.creator) {
+          if (defaultCreator.trim()) {
+            metadata.creator = defaultCreator.trim();
+          } else if ((isTrivnowFormat || isExcelFormat) && row['source']) {
+            metadata.creator = row['source'].toString();
+          } else {
+            errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title}). Please set a default creator above.`);
+            continue;
+          }
+        }
+
+        if (!metadata.date) {
+          metadata.date = new Date().toISOString().split('T')[0];
+        }
+
+        const formData = new FormData();
+        formData.append('metadata', JSON.stringify(metadata));
+
+        const response = await fetch('/api/submit', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
+        } else {
+          imported++;
+        }
+      } catch (error) {
+        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    return { imported, errors, debugInfo };
   };
 
   const handleImport = async () => {
@@ -114,127 +334,26 @@ export default function ImportPage() {
     setResult(null);
 
     try {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          const rows = results.data as any[];
-          const errors: string[] = [];
-          let imported = 0;
-          const debugInfo: any = {
-            totalRows: rows.length,
-            firstRow: rows[0],
-            columnMapping: columnMapping,
-            availableColumns: rows[0] ? Object.keys(rows[0]) : [],
-            isTrivnowFormat: isTrivnowFormat
-          };
-
-          // Import each row as a separate content item (one row = one content item)
-          for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            try {
-              const metadata: any = {};
-              
-              // First pass: collect all values for each mapped field
-              const fieldValues: Record<string, string[]> = {};
-              
-              Object.keys(columnMapping).forEach(csvCol => {
-                const mappedField = columnMapping[csvCol];
-                if (!mappedField) return;
-                
-                const value = row[csvCol];
-                
-                if (value !== undefined && value !== null && value.toString().trim()) {
-                  if (!fieldValues[mappedField]) {
-                    fieldValues[mappedField] = [];
-                  }
-                  fieldValues[mappedField].push(value.toString().trim());
-                }
-              });
-              
-              // Process collected values
-              Object.keys(fieldValues).forEach(mappedField => {
-                const values = fieldValues[mappedField];
-                
-                if (mappedField === 'topics') {
-                  // Combine all topic values and split by comma
-                  const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-                  metadata.topics = [...new Set(allTopics)]; // Remove duplicates
-                } else if (mappedField === 'questionCount') {
-                  // Use the first valid number
-                  const num = parseInt(values[0]) || undefined;
-                  if (num) metadata.questionCount = num;
-                } else if (mappedField === 'types') {
-                  // Combine all type values and split by comma
-                  const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-                  metadata.types = [...new Set(allTypes)]; // Remove duplicates
-                } else if (mappedField === 'description') {
-                  // Concatenate multiple description fields with line breaks
-                  metadata.description = values.join('\n\n');
-                } else if (mappedField === 'creator') {
-                  // Use first non-empty creator value
-                  metadata.creator = values.find(v => v) || '';
-                } else if (mappedField === 'answer') {
-                  // Store answer in both answer and correctAnswer fields
-                  const answerValue = values[0];
-                  metadata.answer = answerValue;
-                  metadata.correctAnswer = answerValue;
-                } else {
-                  // For other fields, use the first value (or concatenate if it makes sense)
-                  metadata[mappedField] = values[0];
-                }
-              });
-
-              // For TrivNow format, generate title from question if not mapped
-              if (!metadata.title) {
-                if (isTrivnowFormat && row['question']) {
-                  // Use first part of question as title
-                  const questionText = row['question'].toString().substring(0, 100);
-                  metadata.title = questionText + (questionText.length >= 100 ? '...' : '');
-                } else {
-                  const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
-                  const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
-                  errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
-                  continue;
-                }
-              }
-
-              // Use default creator if no creator is mapped
-              if (!metadata.creator) {
-                if (defaultCreator.trim()) {
-                  metadata.creator = defaultCreator.trim();
-                } else if (isTrivnowFormat && row['source']) {
-                  metadata.creator = row['source'].toString();
-                } else {
-                  errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title}). Please set a default creator above.`);
-                  continue;
-                }
-              }
-
-              if (!metadata.date) {
-                metadata.date = new Date().toISOString().split('T')[0];
-              }
-
-              const formData = new FormData();
-              formData.append('metadata', JSON.stringify(metadata));
-
-              const response = await fetch('/api/submit', {
-                method: 'POST',
-                body: formData,
-              });
-
-              const result = await response.json();
-
-              if (!response.ok) {
-                errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
-              } else {
-                imported++;
-              }
-            } catch (error) {
-              errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          }
-
+      if (fileType === 'excel') {
+        // Handle Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheetName = excelConfig?.sheetName || workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (jsonData.length > 0) {
+          const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
+          const rows = jsonData.slice(1).map(row => {
+            const obj: any = {};
+            headers.forEach((header, idx) => {
+              obj[header] = row[idx] !== undefined ? row[idx] : '';
+            });
+            return obj;
+          }).filter(row => Object.values(row).some(v => v !== ''));
+          
+          const { imported, errors, debugInfo } = await processRows(rows);
+          
           setResult({
             success: imported > 0,
             imported,
@@ -243,21 +362,47 @@ export default function ImportPage() {
             debug: debugInfo
           });
           setImporting(false);
-        },
-        error: (error) => {
+        } else {
           setResult({
             success: false,
             imported: 0,
-            errors: [error.message]
+            errors: ['Excel file appears to be empty']
           });
           setImporting(false);
         }
-      });
+      } else {
+        // Handle CSV file
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: async (results) => {
+            const rows = results.data as any[];
+            const { imported, errors, debugInfo } = await processRows(rows);
+            
+            setResult({
+              success: imported > 0,
+              imported,
+              errors,
+              message: `Imported ${imported} of ${rows.length} rows`,
+              debug: debugInfo
+            });
+            setImporting(false);
+          },
+          error: (error) => {
+            setResult({
+              success: false,
+              imported: 0,
+              errors: [error.message]
+            });
+            setImporting(false);
+          }
+        });
+      }
     } catch (error) {
       setResult({
         success: false,
         imported: 0,
-        errors: [error instanceof Error ? error.message : 'Failed to parse CSV']
+        errors: [error instanceof Error ? error.message : 'Failed to parse file']
       });
       setImporting(false);
     }
@@ -267,8 +412,15 @@ export default function ImportPage() {
     <div>
       <header className="header">
         <div className="container">
-          <h1>Import CSV</h1>
-          <p>Import trivia content from a CSV file</p>
+          <h1>Import CSV/Excel</h1>
+          <p>Import trivia content from a CSV or Excel (.xlsx) file</p>
+          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
+            <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
+            <Link href="/import" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>Import CSV/Excel</Link>
+            <Link href="/configure-trivnow" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure TrivNow</Link>
+            <Link href="/configure-excel" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure Excel</Link>
+          </nav>
         </div>
       </header>
 
@@ -281,9 +433,9 @@ export default function ImportPage() {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             marginBottom: '20px'
           }}>
-            <h2 style={{ marginBottom: '20px' }}>CSV Format</h2>
+            <h2 style={{ marginBottom: '20px' }}>CSV/Excel Format</h2>
             <p style={{ marginBottom: '15px', color: '#666' }}>
-              Your CSV should have columns that can be mapped to our metadata fields:
+              Your CSV or Excel file should have columns that can be mapped to our metadata fields:
             </p>
             <div style={{
               background: '#f5f5f5',
@@ -320,11 +472,11 @@ export default function ImportPage() {
           }}>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-                Select CSV File
+                Select CSV or Excel File
               </label>
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
                 style={{
                   width: '100%',
@@ -339,7 +491,7 @@ export default function ImportPage() {
             {preview.length > 0 && (
               <div style={{ marginBottom: '30px' }}>
                 <h3 style={{ marginBottom: '15px' }}>Column Mapping</h3>
-                {isTrivnowFormat && (
+                {(isTrivnowFormat || isExcelFormat) && (
                   <div style={{
                     background: '#e3f2fd',
                     border: '1px solid #2196f3',
@@ -347,7 +499,7 @@ export default function ImportPage() {
                     borderRadius: '4px',
                     marginBottom: '15px'
                   }}>
-                    <strong>⚙️ TrivNow Format Detected</strong>
+                    <strong>⚙️ {isExcelFormat ? 'Excel' : 'TrivNow'} Format Detected</strong>
                     <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>
                       Each row will be imported as a separate content item. Map the columns you want to include in the metadata.
                       <br />
@@ -383,8 +535,8 @@ export default function ImportPage() {
                   </p>
                 </div>
                 <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
-                  Map your CSV columns to our metadata fields. Auto-detected mappings are shown below.
-                  {!isTrivnowFormat && (
+                  Map your {fileType === 'excel' ? 'Excel' : 'CSV'} columns to our metadata fields. Auto-detected mappings are shown below.
+                  {!(isTrivnowFormat || isExcelFormat) && (
                     <strong style={{ color: '#c62828', display: 'block', marginTop: '5px' }}>
                       Make sure "Title" column is mapped, or set a default creator above!
                     </strong>
@@ -528,7 +680,7 @@ export default function ImportPage() {
                   flex: 1
                 }}
               >
-                {importing ? 'Importing...' : 'Import CSV'}
+                {importing ? 'Importing...' : `Import ${fileType === 'excel' ? 'Excel' : 'CSV'}`}
               </button>
               <button
                 onClick={() => router.push('/')}
