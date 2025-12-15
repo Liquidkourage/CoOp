@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Papa from 'papaparse';
+import { useUser } from '../contexts/UserContext';
+import UserSelector from '../components/UserSelector';
 
 export default function ConfigureTrivNowPage() {
+  const { currentUser } = useUser();
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -85,17 +88,47 @@ export default function ConfigureTrivNowPage() {
   };
 
   const handleSave = () => {
+    if (!currentUser) {
+      alert('Please select a user first before saving configuration.');
+      return;
+    }
+
     const config = {
       detectionPatterns,
       columnMapping: mapping,
       groupingFields: groupingFields,
-      configuredAt: new Date().toISOString()
+      configuredAt: new Date().toISOString(),
+      username: currentUser
     };
     
-    localStorage.setItem('trivnow-config', JSON.stringify(config));
+    localStorage.setItem(`trivnow-config-${currentUser}`, JSON.stringify(config));
     setConfigured(true);
-    alert('Configuration saved! The import page will now use these mappings for TrivNow format detection.');
+    alert(`Configuration saved for ${currentUser}! The import page will now use these mappings for TrivNow format detection.`);
   };
+
+  // Load existing config for current user
+  useEffect(() => {
+    if (currentUser) {
+      const savedConfig = localStorage.getItem(`trivnow-config-${currentUser}`);
+      if (savedConfig) {
+        try {
+          const config = JSON.parse(savedConfig);
+          setMapping(config.columnMapping || {});
+          setGroupingFields(config.groupingFields || []);
+          setDetectionPatterns(config.detectionPatterns || []);
+          setConfigured(true);
+        } catch (e) {
+          console.error('Error loading saved config:', e);
+        }
+      }
+    } else {
+      // Clear config display if no user
+      setMapping({});
+      setGroupingFields([]);
+      setDetectionPatterns([]);
+      setConfigured(false);
+    }
+  }, [currentUser]);
 
   const toggleGroupingField = (field: string) => {
     if (groupingFields.includes(field)) {

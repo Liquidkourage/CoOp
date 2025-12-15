@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
+import { useUser } from '../contexts/UserContext';
+import UserSelector from '../components/UserSelector';
 
 export default function ConfigureExcelPage() {
+  const { currentUser } = useUser();
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -90,18 +93,49 @@ export default function ConfigureExcelPage() {
   };
 
   const handleSave = () => {
+    if (!currentUser) {
+      alert('Please select a user first before saving configuration.');
+      return;
+    }
+
     const config = {
       detectionPatterns,
       columnMapping: mapping,
       groupingFields: groupingFields,
       sheetName: sheetName,
-      configuredAt: new Date().toISOString()
+      configuredAt: new Date().toISOString(),
+      username: currentUser
     };
     
-    localStorage.setItem('excel-config', JSON.stringify(config));
+    localStorage.setItem(`excel-config-${currentUser}`, JSON.stringify(config));
     setConfigured(true);
-    alert('Configuration saved! The import page will now use these mappings for Excel format detection.');
+    alert(`Configuration saved for ${currentUser}! The import page will now use these mappings for Excel format detection.`);
   };
+
+  // Load existing config for current user
+  useEffect(() => {
+    if (currentUser) {
+      const savedConfig = localStorage.getItem(`excel-config-${currentUser}`);
+      if (savedConfig) {
+        try {
+          const config = JSON.parse(savedConfig);
+          setMapping(config.columnMapping || {});
+          setGroupingFields(config.groupingFields || []);
+          setDetectionPatterns(config.detectionPatterns || []);
+          setSheetName(config.sheetName || '');
+          setConfigured(true);
+        } catch (e) {
+          console.error('Error loading saved config:', e);
+        }
+      }
+    } else {
+      // Clear config display if no user
+      setMapping({});
+      setGroupingFields([]);
+      setDetectionPatterns([]);
+      setConfigured(false);
+    }
+  }, [currentUser]);
 
   const toggleGroupingField = (field: string) => {
     if (groupingFields.includes(field)) {
@@ -116,6 +150,19 @@ export default function ConfigureExcelPage() {
       <header className="header">
         <div className="container">
           <h1>Configure Excel Format</h1>
+          <UserSelector />
+          {!currentUser && (
+            <div style={{
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              padding: '15px',
+              borderRadius: '6px',
+              marginTop: '15px',
+              color: '#856404'
+            }}>
+              ⚠️ Please select or create a user to configure Excel formats.
+            </div>
+          )}
           <p>Upload a sample Excel (.xlsx) file to configure automatic detection and mapping</p>
           <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>

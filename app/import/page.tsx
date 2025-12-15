@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { useUser } from '../contexts/UserContext';
+import UserSelector from '../components/UserSelector';
 
 interface ImportResult {
   success: boolean;
@@ -16,6 +18,7 @@ interface ImportResult {
 
 export default function ImportPage() {
   const router = useRouter();
+  const { currentUser } = useUser();
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -29,7 +32,17 @@ export default function ImportPage() {
   const [fileType, setFileType] = useState<'csv' | 'excel' | null>(null);
   const [defaultCreator, setDefaultCreator] = useState<string>('');
 
+  // Check which formats are configured for current user
+  const hasTrivnowConfig = currentUser ? !!localStorage.getItem(`trivnow-config-${currentUser}`) : false;
+  const hasExcelConfig = currentUser ? !!localStorage.getItem(`excel-config-${currentUser}`) : false;
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!currentUser) {
+      alert('Please select or create a user first.');
+      e.target.value = '';
+      return;
+    }
+
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
@@ -42,9 +55,9 @@ export default function ImportPage() {
       const isCsv = fileName.endsWith('.csv');
       setFileType(isExcel ? 'excel' : isCsv ? 'csv' : null);
       
-      // Check for configurations
-      const savedTrivnowConfig = localStorage.getItem('trivnow-config');
-      const savedExcelConfig = localStorage.getItem('excel-config');
+      // Check for configurations (user-specific)
+      const savedTrivnowConfig = currentUser ? localStorage.getItem(`trivnow-config-${currentUser}`) : null;
+      const savedExcelConfig = currentUser ? localStorage.getItem(`excel-config-${currentUser}`) : null;
       
       let trivnowConfig = null;
       let excelConfig = null;
@@ -375,6 +388,10 @@ export default function ImportPage() {
   };
 
   const handleImport = async () => {
+    if (!currentUser) {
+      alert('Please select or create a user first before importing.');
+      return;
+    }
     if (!file) return;
 
     setImporting(true);
@@ -461,6 +478,19 @@ export default function ImportPage() {
         <div className="container">
           <h1>Import CSV/Excel</h1>
           <p>Import trivia content from a CSV or Excel (.xlsx) file</p>
+          <UserSelector />
+          {!currentUser && (
+            <div style={{
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              padding: '15px',
+              borderRadius: '6px',
+              marginTop: '15px',
+              color: '#856404'
+            }}>
+              ⚠️ Please select or create a user to import content. You'll only see formats you've configured.
+            </div>
+          )}
           <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
             <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
