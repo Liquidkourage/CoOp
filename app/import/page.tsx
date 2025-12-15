@@ -78,13 +78,13 @@ export default function ImportPage() {
           
           if (jsonData.length > 0) {
             const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-            const rows = jsonData.slice(1).map(row => {
+            const rows = jsonData.slice(1).map((row: any) => {
               const obj: any = {};
               headers.forEach((header, idx) => {
                 obj[header] = row[idx] !== undefined ? row[idx] : '';
               });
               return obj;
-            }).filter(row => Object.values(row).some(v => v !== ''));
+            }).filter((row: any) => Object.values(row).some((v: any) => v !== ''));
             
             setPreview(rows.slice(0, 5));
             
@@ -344,13 +344,13 @@ export default function ImportPage() {
         
         if (jsonData.length > 0) {
           const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-          const rows = jsonData.slice(1).map(row => {
+          const rows = jsonData.slice(1).map((row: any) => {
             const obj: any = {};
             headers.forEach((header, idx) => {
               obj[header] = row[idx] !== undefined ? row[idx] : '';
             });
             return obj;
-          }).filter(row => Object.values(row).some(v => v !== ''));
+          }).filter((row: any) => Object.values(row).some((v: any) => v !== ''));
           
           const { imported, errors, debugInfo } = await processRows(rows);
           
