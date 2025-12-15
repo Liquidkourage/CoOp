@@ -32,7 +32,9 @@ interface ContentResponse {
   error?: string;
 }
 
-type ViewMode = 'search' | 'browse' | 'stats' | 'topics' | 'creators';
+type ViewMode = 'search' | 'browse' | 'stats' | 'topics' | 'creators' | 
+                'qa-pairs' | 'quiz-format' | 'spreadsheet' | 'plain-text' | 
+                'flashcards' | 'bulk-copy' | 'document' | 'structured';
 
 export default function HomePage() {
   const [content, setContent] = useState<ContentItem[]>([]);
@@ -46,11 +48,12 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [stats, setStats] = useState<any>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const limit = 50;
 
-  // Load statistics
   useEffect(() => {
     fetch('/api/content?limit=1')
       .then(res => res.json())
@@ -62,7 +65,6 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  // Load content with pagination
   const loadContent = async (pageNum: number = 1, reset: boolean = false) => {
     setLoading(true);
     setError(null);
@@ -100,11 +102,8 @@ export default function HomePage() {
     }
   };
 
-  // Load topics and creators for filters
   const [allTopics, setAllTopics] = useState<string[]>([]);
   const [allCreators, setAllCreators] = useState<string[]>([]);
-  const [allDifficulties, setAllDifficulties] = useState<string[]>([]);
-  const [allFormats, setAllFormats] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -116,20 +115,709 @@ export default function HomePage() {
     }).catch(() => {});
   }, []);
 
-  // Search handler
   const handleSearch = () => {
     setPage(1);
+    setSelectedItems(new Set());
     loadContent(1, true);
   };
 
-  // Load initial content only if in browse mode
   useEffect(() => {
     if (viewMode === 'browse' && content.length === 0) {
       loadContent(1, true);
     }
   }, [viewMode]);
 
+  const toggleSelect = (id: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedItems(new Set(content.map(item => item.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedItems(new Set());
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(() => {
+      alert('Failed to copy. Please select and copy manually.');
+    });
+  };
+
+  const getSelectedContent = () => {
+    return content.filter(item => selectedItems.has(item.id));
+  };
+
+  const renderQAPairs = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const text = itemsToShow.map((item, idx) => {
+      const q = item.metadata.description || item.metadata.title || 'No question';
+      const a = item.metadata.answer || 'No answer provided';
+      return `Q${idx + 1}: ${q}\nA${idx + 1}: ${a}\n`;
+    }).join('\n');
+    
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Question-Answer Pairs</h2>
+          <button
+            onClick={() => copyToClipboard(text)}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy All
+          </button>
+        </div>
+        <div style={{
+          background: '#f8f9fa',
+          padding: '20px',
+          borderRadius: '6px',
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          lineHeight: '1.8',
+          whiteSpace: 'pre-wrap',
+          border: '1px solid #dee2e6',
+          maxHeight: '600px',
+          overflow: 'auto'
+        }}>
+          {itemsToShow.map((item, idx) => (
+            <div key={item.id} style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: idx < itemsToShow.length - 1 ? '1px solid #dee2e6' : 'none' }}>
+              <div style={{ fontWeight: 'bold', color: '#0066cc', marginBottom: '8px' }}>
+                Q{idx + 1}: {item.metadata.description || item.metadata.title || 'No question'}
+              </div>
+              <div style={{ color: '#28a745', marginLeft: '20px' }}>
+                A{idx + 1}: {item.metadata.answer || 'No answer provided'}
+              </div>
+              {item.metadata.topics && item.metadata.topics.length > 0 && (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', marginLeft: '20px' }}>
+                  Topics: {item.metadata.topics.join(', ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderQuizFormat = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const text = itemsToShow.map((item, idx) => {
+      const q = item.metadata.description || item.metadata.title || 'No question';
+      const a = item.metadata.answer || 'No answer provided';
+      return `${idx + 1}. ${q}\n   Answer: ${a}\n`;
+    }).join('\n');
+    
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Quiz Format</h2>
+          <button
+            onClick={() => copyToClipboard(text)}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy All
+          </button>
+        </div>
+        <div style={{
+          background: '#fff',
+          padding: '30px',
+          borderRadius: '6px',
+          fontFamily: 'Georgia, serif',
+          fontSize: '16px',
+          lineHeight: '2',
+          border: '2px solid #333',
+          maxHeight: '600px',
+          overflow: 'auto'
+        }}>
+          {itemsToShow.map((item, idx) => (
+            <div key={item.id} style={{ marginBottom: '25px' }}>
+              <div style={{ fontWeight: '600', marginBottom: '10px' }}>
+                {idx + 1}. {item.metadata.description || item.metadata.title || 'No question'}
+              </div>
+              <div style={{ marginLeft: '30px', color: '#555', fontStyle: 'italic' }}>
+                Answer: {item.metadata.answer || 'No answer provided'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSpreadsheet = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const csv = [
+      ['Question', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
+      ...itemsToShow.map(item => [
+        (item.metadata.description || item.metadata.title || '').replace(/\t/g, ' '),
+        (item.metadata.answer || '').replace(/\t/g, ' '),
+        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
+        (item.metadata.creator || '').replace(/\t/g, ' '),
+        (item.metadata.date || '').replace(/\t/g, ' ')
+      ].join('\t'))
+    ].join('\n');
+    
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Spreadsheet View (Tab-Separated)</h2>
+          <button
+            onClick={() => copyToClipboard(csv)}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy All (Paste into Excel)
+          </button>
+        </div>
+        <div style={{
+          background: '#f8f9fa',
+          padding: '15px',
+          borderRadius: '6px',
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          overflowX: 'auto',
+          border: '1px solid #dee2e6'
+        }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
+            <thead>
+              <tr style={{ background: '#e9ecef', fontWeight: '600' }}>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Question</th>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Answer</th>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Topic</th>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Creator</th>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {itemsToShow.map((item, idx) => (
+                <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8f9fa' }}>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.description || item.metadata.title || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6', color: '#28a745', fontWeight: '500' }}>{item.metadata.answer || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.topics?.join(', ') || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.creator || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.date || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPlainText = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const text = itemsToShow.map((item, idx) => {
+      let output = `--- Question ${idx + 1} ---\n`;
+      output += `Question: ${item.metadata.description || item.metadata.title || 'No question'}\n`;
+      output += `Answer: ${item.metadata.answer || 'No answer provided'}\n`;
+      if (item.metadata.topics?.length) output += `Topics: ${item.metadata.topics.join(', ')}\n`;
+      if (item.metadata.creator) output += `Creator: ${item.metadata.creator}\n`;
+      if (item.metadata.date) output += `Date: ${item.metadata.date}\n`;
+      return output;
+    }).join('\n');
+    
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Plain Text Export</h2>
+          <button
+            onClick={() => copyToClipboard(text)}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy All
+          </button>
+        </div>
+        <textarea
+          readOnly
+          value={text}
+          style={{
+            width: '100%',
+            minHeight: '500px',
+            padding: '15px',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            border: '2px solid #dee2e6',
+            borderRadius: '6px',
+            background: '#f8f9fa',
+            resize: 'vertical'
+          }}
+          onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+        />
+      </div>
+    );
+  };
+
+  const toggleFlip = (id: string) => {
+      setFlippedCards(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    };
+
+  const renderFlashcards = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    
+    const handleToggleFlip = (id: string) => {
+      setFlippedCards(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    };
+
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Flashcard View</h2>
+          <div>
+            <button
+              onClick={() => setShowAnswers(!showAnswers)}
+              style={{
+                padding: '8px 16px',
+                marginRight: '10px',
+                background: showAnswers ? '#28a745' : '#6c757d',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {showAnswers ? 'Hide' : 'Show'} All Answers
+            </button>
+            <button
+              onClick={() => {
+                const text = itemsToShow.map(item => 
+                  `${item.metadata.description || item.metadata.title || 'No question'}\n${item.metadata.answer || 'No answer'}`
+                ).join('\n\n---\n\n');
+                copyToClipboard(text);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#0066cc',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              📋 Copy All
+            </button>
+          </div>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '20px'
+        }}>
+          {itemsToShow.map((item) => {
+            const isFlipped = flippedCards.has(item.id) || showAnswers;
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleToggleFlip(item.id)}
+                style={{
+                  aspectRatio: '1.5',
+                  perspective: '1000px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'relative',
+                  transformStyle: 'preserve-3d',
+                  transition: 'transform 0.6s',
+                  transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    backfaceVisibility: 'hidden',
+                    background: '#0066cc',
+                    color: '#fff',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                    fontSize: '18px',
+                    fontWeight: '500'
+                  }}>
+                    {item.metadata.description || item.metadata.title || 'No question'}
+                  </div>
+                  <div style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    backfaceVisibility: 'hidden',
+                    transform: 'rotateY(180deg)',
+                    background: '#28a745',
+                    color: '#fff',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                    fontSize: '18px',
+                    fontWeight: '500'
+                  }}>
+                    {item.metadata.answer || 'No answer provided'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p style={{ marginTop: '20px', color: '#666', fontSize: '14px', textAlign: 'center' }}>
+          Click a card to flip it, or use "Show All Answers" to reveal all at once
+        </p>
+      </div>
+    );
+  };
+
+  const renderBulkCopy = () => {
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Bulk Copy Mode</h2>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={selectAll}
+              style={{
+                padding: '8px 16px',
+                background: '#6c757d',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Select All
+            </button>
+            <button
+              onClick={deselectAll}
+              style={{
+                padding: '8px 16px',
+                background: '#6c757d',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Deselect All
+            </button>
+            <button
+              onClick={() => {
+                const selected = getSelectedContent();
+                const text = selected.map(item => 
+                  `${item.metadata.description || item.metadata.title || 'No question'}\nAnswer: ${item.metadata.answer || 'No answer'}\n`
+                ).join('\n---\n\n');
+                copyToClipboard(text);
+              }}
+              disabled={selectedItems.size === 0}
+              style={{
+                padding: '8px 16px',
+                background: selectedItems.size === 0 ? '#ccc' : '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: selectedItems.size === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              📋 Copy Selected ({selectedItems.size})
+            </button>
+          </div>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '15px'
+        }}>
+          {content.map((item) => {
+            const isSelected = selectedItems.has(item.id);
+            return (
+              <div
+                key={item.id}
+                onClick={() => toggleSelect(item.id)}
+                style={{
+                  padding: '15px',
+                  border: `3px solid ${isSelected ? '#28a745' : '#dee2e6'}`,
+                  borderRadius: '8px',
+                  background: isSelected ? '#e8f5e9' : '#fff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+              >
+                {isSelected && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: '#28a745',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                    ✓
+                  </div>
+                )}
+                <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+                  {item.metadata.description || item.metadata.title || 'No question'}
+                </div>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  Answer: {item.metadata.answer || 'No answer'}
+                </div>
+                {item.metadata.topics && item.metadata.topics.length > 0 && (
+                  <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                    {item.metadata.topics.map((topic, idx) => (
+                      <span key={idx} className="topic-tag-inline">{topic}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDocument = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const text = itemsToShow.map((item, idx) => {
+      let output = `${idx + 1}. ${item.metadata.description || item.metadata.title || 'No question'}\n`;
+      output += `   Answer: ${item.metadata.answer || 'No answer provided'}\n`;
+      if (item.metadata.topics?.length) output += `   Topics: ${item.metadata.topics.join(', ')}\n`;
+      return output + '\n';
+    }).join('');
+    
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Formatted Document View</h2>
+          <button
+            onClick={() => copyToClipboard(text)}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy All (Word/Google Docs Ready)
+          </button>
+        </div>
+        <div style={{
+          background: '#fff',
+          padding: '40px',
+          borderRadius: '6px',
+          border: '1px solid #ccc',
+          maxWidth: '800px',
+          margin: '0 auto',
+          fontFamily: 'Times New Roman, serif',
+          fontSize: '14px',
+          lineHeight: '1.8',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          maxHeight: '600px',
+          overflow: 'auto'
+        }}>
+          {itemsToShow.map((item, idx) => (
+            <div key={item.id} style={{ marginBottom: '20px', paddingBottom: '15px', borderBottom: idx < itemsToShow.length - 1 ? '1px solid #eee' : 'none' }}>
+              <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '15px' }}>
+                {idx + 1}. {item.metadata.description || item.metadata.title || 'No question'}
+              </div>
+              <div style={{ marginLeft: '25px', color: '#555', fontSize: '13px' }}>
+                Answer: <span style={{ fontStyle: 'italic' }}>{item.metadata.answer || 'No answer provided'}</span>
+              </div>
+              {item.metadata.topics && item.metadata.topics.length > 0 && (
+                <div style={{ marginLeft: '25px', fontSize: '12px', color: '#888', marginTop: '5px' }}>
+                  Topics: {item.metadata.topics.join(', ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStructured = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const json = JSON.stringify(itemsToShow.map(item => ({
+      question: item.metadata.description || item.metadata.title || 'No question',
+      answer: item.metadata.answer || 'No answer',
+      topics: item.metadata.topics || [],
+      creator: item.metadata.creator || '',
+      date: item.metadata.date || ''
+    })), null, 2);
+    
+    const csv = [
+      ['Question', 'Answer', 'Topics', 'Creator', 'Date'],
+      ...itemsToShow.map(item => [
+        `"${(item.metadata.description || item.metadata.title || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.date || '').replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n');
+
+    return (
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Structured Data Export</h2>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => copyToClipboard(json)}
+              style={{
+                padding: '10px 20px',
+                background: '#6f42c1',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              📋 Copy JSON
+            </button>
+            <button
+              onClick={() => copyToClipboard(csv)}
+              style={{
+                padding: '10px 20px',
+                background: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              📋 Copy CSV
+            </button>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div>
+            <h3 style={{ marginBottom: '10px', fontSize: '16px' }}>JSON Format</h3>
+            <textarea
+              readOnly
+              value={json}
+              style={{
+                width: '100%',
+                minHeight: '400px',
+                padding: '15px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                border: '2px solid #dee2e6',
+                borderRadius: '6px',
+                background: '#f8f9fa',
+                resize: 'vertical'
+              }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+          </div>
+          <div>
+            <h3 style={{ marginBottom: '10px', fontSize: '16px' }}>CSV Format</h3>
+            <textarea
+              readOnly
+              value={csv}
+              style={{
+                width: '100%',
+                minHeight: '400px',
+                padding: '15px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                border: '2px solid #dee2e6',
+                borderRadius: '6px',
+                background: '#f8f9fa',
+                resize: 'vertical'
+              }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const hasFilters = searchQuery.trim() || selectedTopic || selectedCreator || selectedDifficulty || selectedFormat;
+  const isExportView = ['qa-pairs', 'quiz-format', 'spreadsheet', 'plain-text', 'flashcards', 'bulk-copy', 'document', 'structured'].includes(viewMode);
 
   return (
     <div>
@@ -150,7 +838,6 @@ export default function HomePage() {
 
       <main className="container">
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          {/* Stats Bar */}
           <div className="stats">
             <p>
               <strong>{totalCount.toLocaleString()}</strong> total items in repository
@@ -176,7 +863,15 @@ export default function HomePage() {
               { mode: 'browse', label: '📚 Browse', desc: 'Browse all content' },
               { mode: 'stats', label: '📊 Statistics', desc: 'View repository stats' },
               { mode: 'topics', label: '🏷️ Topics', desc: 'Browse by topic' },
-              { mode: 'creators', label: '👤 Creators', desc: 'Browse by creator' }
+              { mode: 'creators', label: '👤 Creators', desc: 'Browse by creator' },
+              { mode: 'qa-pairs', label: '📝 Q&A Pairs', desc: 'Copy-friendly Q&A format' },
+              { mode: 'quiz-format', label: '📋 Quiz Format', desc: 'Numbered quiz style' },
+              { mode: 'spreadsheet', label: '📊 Spreadsheet', desc: 'Tab-separated for Excel' },
+              { mode: 'plain-text', label: '📄 Plain Text', desc: 'Raw text export' },
+              { mode: 'flashcards', label: '🃏 Flashcards', desc: 'Interactive flashcards' },
+              { mode: 'bulk-copy', label: '📦 Bulk Copy', desc: 'Select & copy multiple' },
+              { mode: 'document', label: '📑 Document', desc: 'Word/Google Docs format' },
+              { mode: 'structured', label: '💾 Structured', desc: 'JSON/CSV export' }
             ].map(({ mode, label, desc }) => (
               <button
                 key={mode}
@@ -188,15 +883,16 @@ export default function HomePage() {
                 }}
                 title={desc}
                 style={{
-                  padding: '10px 20px',
+                  padding: '10px 16px',
                   border: 'none',
                   borderBottom: viewMode === mode ? '3px solid #0066cc' : '3px solid transparent',
                   background: 'transparent',
                   color: viewMode === mode ? '#0066cc' : '#666',
                   cursor: 'pointer',
                   fontWeight: viewMode === mode ? '600' : '500',
-                  fontSize: '0.95rem',
-                  transition: 'all 0.2s'
+                  fontSize: '0.9rem',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {label}
@@ -326,6 +1022,7 @@ export default function HomePage() {
                       setSelectedFormat('');
                       setContent([]);
                       setPage(1);
+                      setSelectedItems(new Set());
                     }}
                     style={{
                       padding: '12px 24px',
@@ -520,7 +1217,37 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Content Display */}
+          {/* Export Views */}
+          {isExportView && content.length === 0 && (
+            <div style={{
+              background: '#fff',
+              padding: '60px 30px',
+              borderRadius: '0 0 8px 8px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              textAlign: 'center',
+              color: '#666'
+            }}>
+              <h2 style={{ marginBottom: '15px', color: '#333' }}>No content loaded</h2>
+              <p style={{ marginBottom: '20px' }}>
+                Use Search or Browse to load content, then switch to an export view.
+              </p>
+            </div>
+          )}
+
+          {isExportView && content.length > 0 && (
+            <>
+              {viewMode === 'qa-pairs' && renderQAPairs()}
+              {viewMode === 'quiz-format' && renderQuizFormat()}
+              {viewMode === 'spreadsheet' && renderSpreadsheet()}
+              {viewMode === 'plain-text' && renderPlainText()}
+              {viewMode === 'flashcards' && renderFlashcards()}
+              {viewMode === 'bulk-copy' && renderBulkCopy()}
+              {viewMode === 'document' && renderDocument()}
+              {viewMode === 'structured' && renderStructured()}
+            </>
+          )}
+
+          {/* Standard Content Display */}
           {loading && content.length === 0 ? (
             <div className="loading">
               <p>Loading content...</p>
@@ -528,24 +1255,6 @@ export default function HomePage() {
           ) : error ? (
             <div className="error">
               <strong>Error:</strong> {error}
-            </div>
-          ) : content.length === 0 && (viewMode === 'search' || viewMode === 'browse') ? (
-            <div style={{
-              background: '#fff',
-              padding: '60px 30px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              textAlign: 'center',
-              color: '#666'
-            }}>
-              <h2 style={{ marginBottom: '15px', color: '#333' }}>
-                {viewMode === 'search' ? 'No results found' : 'Start browsing'}
-              </h2>
-              <p style={{ marginBottom: '20px' }}>
-                {viewMode === 'search'
-                  ? 'Try adjusting your search terms or filters.'
-                  : 'Click "Browse" to load content, or use Search to find specific items.'}
-              </p>
             </div>
           ) : (viewMode === 'search' || viewMode === 'browse') && content.length > 0 ? (
             <>
