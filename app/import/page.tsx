@@ -101,33 +101,45 @@ export default function ImportPage() {
               ? { ...excelConfig.columnMapping }
               : {};
             
-            // Auto-map fields
-            headers.forEach(header => {
-              if (mapping[header]) return;
-              
-              const lower = header.toLowerCase().trim();
-              if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                mapping[header] = 'title';
-              } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
-                mapping[header] = 'creator';
-              } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
-                mapping[header] = 'date';
-              } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject') || lower.includes('tag')) {
-                mapping[header] = 'topics';
-              } else if (lower.includes('format') || (lower.includes('type') && !lower.includes('question'))) {
-                mapping[header] = 'format';
-              } else if ((lower.includes('question') && lower.includes('count')) || lower.includes('questions') || lower === 'count') {
-                mapping[header] = 'questionCount';
-              } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
-                mapping[header] = 'difficulty';
-              } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
-                mapping[header] = 'description';
-              } else if (lower.includes('question') && lower.includes('type')) {
-                mapping[header] = 'types';
-              } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
-                mapping[header] = 'answer';
-              }
-            });
+              // Auto-map fields
+              headers.forEach(header => {
+                if (mapping[header]) return;
+                
+                const lower = header.toLowerCase().trim();
+                // Check exact matches first
+                if (lower === 'question' || lower === 'questions') {
+                  // Map Question column to description (will be used for title generation)
+                  mapping[header] = 'description';
+                } else if (lower === 'category') {
+                  // Category is often a round/category name, map to description (can be changed by user)
+                  mapping[header] = 'description';
+                } else if (lower === 'type') {
+                  // "Type" column is usually question type, not file format
+                  mapping[header] = 'types';
+                } else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
+                  mapping[header] = 'title';
+                } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
+                  mapping[header] = 'creator';
+                } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
+                  mapping[header] = 'date';
+                } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
+                  // Don't auto-map "category" here - it's handled above
+                  mapping[header] = 'topics';
+                } else if (lower.includes('format') || (lower.includes('file') && lower.includes('format'))) {
+                  // Only map to format if it explicitly says "format" or "file format"
+                  mapping[header] = 'format';
+                } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
+                  mapping[header] = 'questionCount';
+                } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
+                  mapping[header] = 'difficulty';
+                } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
+                  mapping[header] = 'description';
+                } else if (lower.includes('question') && lower.includes('type')) {
+                  mapping[header] = 'types';
+                } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
+                  mapping[header] = 'answer';
+                }
+              });
             
             setColumnMapping(mapping);
           }
@@ -167,17 +179,29 @@ export default function ImportPage() {
                 if (mapping[header]) return;
                 
                 const lower = header.toLowerCase().trim();
-                if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
+                // Check exact matches first
+                if (lower === 'question' || lower === 'questions') {
+                  // Map Question column to description (will be used for title generation)
+                  mapping[header] = 'description';
+                } else if (lower === 'category') {
+                  // Category is often a round/category name, map to description (can be changed by user)
+                  mapping[header] = 'description';
+                } else if (lower === 'type') {
+                  // "Type" column is usually question type, not file format
+                  mapping[header] = 'types';
+                } else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
                   mapping[header] = 'title';
                 } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
                   mapping[header] = 'creator';
                 } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
                   mapping[header] = 'date';
-                } else if (lower.includes('topic') || lower.includes('category') || lower.includes('subject') || lower.includes('tag')) {
+                } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
+                  // Don't auto-map "category" here - it's handled above
                   mapping[header] = 'topics';
-                } else if (lower.includes('format') || (lower.includes('type') && !lower.includes('question'))) {
+                } else if (lower.includes('format') || (lower.includes('file') && lower.includes('format'))) {
+                  // Only map to format if it explicitly says "format" or "file format"
                   mapping[header] = 'format';
-                } else if ((lower.includes('question') && lower.includes('count')) || lower.includes('questions') || lower === 'count') {
+                } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
                   mapping[header] = 'questionCount';
                 } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
                   mapping[header] = 'difficulty';
@@ -276,11 +300,26 @@ export default function ImportPage() {
 
         // Generate title from question if not mapped
         if (!metadata.title) {
-          if ((isTrivnowFormat || isExcelFormat) && row['question']) {
+          // Try to find a question column (case-insensitive)
+          const questionKey = Object.keys(row).find(key => 
+            key.toLowerCase() === 'question' || key.toLowerCase() === 'questions'
+          );
+          
+          if (questionKey && row[questionKey]) {
             // Use first part of question as title
-            const questionText = row['question'].toString().substring(0, 100);
-            metadata.title = questionText + (questionText.length >= 100 ? '...' : '');
-          } else {
+            const questionText = row[questionKey].toString().trim();
+            if (questionText) {
+              metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
+            }
+          }
+          
+          // If still no title, try to use description if available
+          if (!metadata.title && metadata.description) {
+            metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+          }
+          
+          // If still no title, error out
+          if (!metadata.title) {
             const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
             const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
             errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
