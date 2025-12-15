@@ -634,7 +634,7 @@ export default function HomePage() {
                   </div>
                 )}
                 <div style={{ fontWeight: '600', marginBottom: '8px' }}>
-                  {item.metadata.description || item.metadata.title || 'No question'}
+                  {item.metadata.description || item.metadata.title || 'No question text'}
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>
                   Answer: {item.metadata.answer || 'No answer'}

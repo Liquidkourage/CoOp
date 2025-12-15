@@ -44,6 +44,17 @@ export default function SubmitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.description.trim()) {
+      setError('Question text/description is required');
+      return;
+    }
+    if (!formData.creator.trim()) {
+      setError('Creator is required');
+      return;
+    }
+    
     setSubmitting(true);
     setError(null);
 
@@ -51,7 +62,7 @@ export default function SubmitPage() {
       const formDataToSend = new FormData();
       
       const metadata = {
-        title: formData.title,
+        title: formData.title.trim() || undefined, // Optional - will use description if not provided
         creator: formData.creator,
         date: formData.date,
         topics: formData.topics.split(',').map(t => t.trim()).filter(Boolean),
@@ -59,8 +70,13 @@ export default function SubmitPage() {
         questionCount: formData.questionCount ? parseInt(formData.questionCount) : undefined,
         difficulty: formData.difficulty || undefined,
         types: formData.types,
-        description: formData.description || undefined,
+        description: formData.description.trim(), // Required
       };
+      
+      // If no title provided, use description as title (for display purposes)
+      if (!metadata.title) {
+        metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+      }
       
       formDataToSend.append('metadata', JSON.stringify(metadata));
       
@@ -127,11 +143,10 @@ export default function SubmitPage() {
           }}>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Title *
+                Title (Optional)
               </label>
               <input
                 type="text"
-                required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 style={{
@@ -141,8 +156,11 @@ export default function SubmitPage() {
                   borderRadius: '4px',
                   fontSize: '16px'
                 }}
-                placeholder="e.g., Science Trivia Set #1"
+                placeholder="Optional: Only needed for quiz sets. Individual questions don't need titles."
               />
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                For individual questions, leave blank. Title is only useful for quiz sets or collections.
+              </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -300,9 +318,10 @@ export default function SubmitPage() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Description
+                Question Text / Description *
               </label>
               <textarea
+                required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 style={{
@@ -314,8 +333,11 @@ export default function SubmitPage() {
                   minHeight: '100px',
                   resize: 'vertical'
                 }}
-                placeholder="Brief description of your trivia content"
+                placeholder="Enter your trivia question here..."
               />
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                This is the actual question text. Required for all content.
+              </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

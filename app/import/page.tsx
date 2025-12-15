@@ -318,12 +318,20 @@ export default function ImportPage() {
             metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
           }
           
-          // If still no title, error out
+          // Title is optional - if still no title, use description or question text as fallback
           if (!metadata.title) {
-            const mappedTitleCol = Object.keys(columnMapping).find(col => columnMapping[col] === 'title');
-            const rowSample = Object.entries(row).slice(0, 3).map(([k, v]) => `${k}="${v}"`).join(', ');
-            errors.push(`Row ${i + 1}: Missing title. Title column mapped to: "${mappedTitleCol || 'none'}". Sample: ${rowSample}`);
-            continue;
+            if (metadata.description) {
+              // Use description as title (truncated)
+              metadata.title = metadata.description.substring(0, 100) + (metadata.description.length > 100 ? '...' : '');
+            } else {
+              // Last resort: use first available text field
+              const firstTextValue = Object.values(row).find(v => v && v.toString().trim());
+              if (firstTextValue) {
+                metadata.title = firstTextValue.toString().trim().substring(0, 100);
+              } else {
+                metadata.title = 'Untitled Question';
+              }
+            }
           }
         }
 
