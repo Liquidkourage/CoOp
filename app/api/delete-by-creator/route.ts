@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        'SELECT id, title, creator, date, format, topics FROM content_items WHERE creator = $1 ORDER BY created_at DESC',
+        'SELECT id, title, creator, date, topics FROM content_items WHERE creator = $1 ORDER BY created_at DESC',
         [creator]
       );
       
@@ -88,7 +88,6 @@ export async function GET(request: NextRequest) {
           title: row.title,
           creator: row.creator,
           date: row.date,
-          format: row.format,
           topics: row.topics
         }))
       });

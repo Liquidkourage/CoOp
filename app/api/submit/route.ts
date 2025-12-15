@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
       creator: metadata.creator,
       date: metadata.date,
       topics: metadata.topics,
-      format: metadata.format,
       questionCount: metadata.questionCount,
       difficulty: metadata.difficulty,
       types: metadata.types,

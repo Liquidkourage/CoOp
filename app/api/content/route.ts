@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const topics = searchParams.get('topics')?.split(',');
     const creator = searchParams.get('creator');
     const difficulty = searchParams.get('difficulty');
-    const format = searchParams.get('format');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
@@ -43,11 +42,6 @@ export async function GET(request: NextRequest) {
           params.push(difficulty);
           paramCount++;
         }
-        if (format) {
-          query += ` AND format = $${paramCount}`;
-          params.push(format);
-          paramCount++;
-        }
         if (search) {
           query += ` AND (
             LOWER(title) LIKE $${paramCount} OR
@@ -77,7 +71,6 @@ export async function GET(request: NextRequest) {
             creator: row.creator || undefined,
             date: row.date || undefined,
             topics: row.topics || undefined,
-            format: row.format || undefined,
             questionCount: row.question_count || undefined,
             difficulty: row.difficulty || undefined,
             types: row.types || undefined,
@@ -100,12 +93,11 @@ export async function GET(request: NextRequest) {
       console.warn('Database not available, using file system:', dbError);
       // Fallback to file system (limited pagination)
       let fileContent = loadAllContent();
-      if (topics || creator || difficulty || format) {
+      if (topics || creator || difficulty) {
         fileContent = filterFileContent(fileContent, {
           topics: topics?.filter(Boolean),
           creator: creator || undefined,
           difficulty: difficulty || undefined,
-          format: format || undefined,
         });
       }
       if (search) {

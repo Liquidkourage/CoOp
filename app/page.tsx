@@ -11,7 +11,6 @@ interface ContentItem {
     creator?: string;
     date?: string;
     topics?: string[];
-    format?: string;
     questionCount?: number;
     difficulty?: string;
     types?: string[];
@@ -44,7 +43,6 @@ export default function HomePage() {
   const [selectedTopic, setSelectedTopic] = useState('');
   const [selectedCreator, setSelectedCreator] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('');
-  const [selectedFormat, setSelectedFormat] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('search');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -75,7 +73,6 @@ export default function HomePage() {
     if (selectedTopic) params.append('topics', selectedTopic);
     if (selectedCreator) params.append('creator', selectedCreator);
     if (selectedDifficulty) params.append('difficulty', selectedDifficulty);
-    if (selectedFormat) params.append('format', selectedFormat);
     params.append('page', pageNum.toString());
     params.append('limit', limit.toString());
 
@@ -817,7 +814,7 @@ export default function HomePage() {
     );
   };
 
-  const hasFilters = searchQuery.trim() || selectedTopic || selectedCreator || selectedDifficulty || selectedFormat;
+  const hasFilters = searchQuery.trim() || selectedTopic || selectedCreator || selectedDifficulty;
   const isExportView = ['qa-pairs', 'quiz-format', 'spreadsheet', 'plain-text', 'flashcards', 'bulk-copy', 'document', 'structured'].includes(viewMode);
 
   return (
@@ -978,21 +975,6 @@ export default function HomePage() {
                   </select>
                 </div>
 
-                <div className="filter-group">
-                  <label>Format</label>
-                  <select
-                    value={selectedFormat}
-                    onChange={(e) => setSelectedFormat(e.target.value)}
-                    style={{ minWidth: '150px' }}
-                  >
-                    <option value="">All Formats</option>
-                    <option value="csv">CSV</option>
-                    <option value="xlsx">Excel</option>
-                    <option value="pdf">PDF</option>
-                    <option value="txt">Text</option>
-                    <option value="json">JSON</option>
-                  </select>
-                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -1020,7 +1002,6 @@ export default function HomePage() {
                       setSelectedTopic('');
                       setSelectedCreator('');
                       setSelectedDifficulty('');
-                      setSelectedFormat('');
                       setContent([]);
                       setPage(1);
                       setSelectedItems(new Set());
@@ -1272,11 +1253,6 @@ export default function HomePage() {
                       {item.metadata.date && (
                         <div className="meta-item">
                           <strong>Date:</strong> {new Date(item.metadata.date).toLocaleDateString()}
-                        </div>
-                      )}
-                      {item.metadata.format && (
-                        <div className="meta-item">
-                          <strong>Format:</strong> {item.metadata.format}
                         </div>
                       )}
                     </div>

@@ -10,7 +10,6 @@ export default function SubmitPage() {
     creator: '',
     date: new Date().toISOString().split('T')[0],
     topics: '',
-    format: '',
     questionCount: '',
     difficulty: '',
     types: [] as string[],
@@ -27,9 +26,6 @@ export default function SubmitPage() {
       setFiles(Array.from(e.target.files));
       if (files.length === 0 && e.target.files[0]) {
         const ext = e.target.files[0].name.split('.').pop()?.toLowerCase();
-        if (ext && !formData.format) {
-          setFormData({ ...formData, format: ext });
-        }
       }
     }
   };
@@ -67,7 +63,6 @@ export default function SubmitPage() {
         creator: formData.creator,
         date: formData.date,
         topics: formData.topics.split(',').map(t => t.trim()).filter(Boolean),
-        format: formData.format,
         questionCount: formData.questionCount ? parseInt(formData.questionCount) : undefined,
         difficulty: formData.difficulty || undefined,
         types: formData.types,
@@ -223,30 +218,6 @@ export default function SubmitPage() {
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Format
-              </label>
-              <select
-                value={formData.format}
-                onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px'
-                }}
-              >
-                <option value="">Select format</option>
-                <option value="pdf">PDF</option>
-                <option value="xlsx">Excel</option>
-                <option value="pptx">PowerPoint</option>
-                <option value="txt">Text</option>
-                <option value="json">JSON</option>
-                <option value="image">Image</option>
-              </select>
-            </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>

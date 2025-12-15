@@ -17,7 +17,6 @@ export async function initDatabase() {
         creator TEXT,
         date DATE,
         topics TEXT[],
-        format TEXT,
         question_count INTEGER,
         difficulty TEXT,
         types TEXT[],
@@ -45,7 +44,6 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_content_topics ON content_items USING GIN(topics);
       CREATE INDEX IF NOT EXISTS idx_content_date ON content_items(date);
       CREATE INDEX IF NOT EXISTS idx_content_difficulty ON content_items(difficulty);
-      CREATE INDEX IF NOT EXISTS idx_content_format ON content_items(format);
     `);
   } finally {
     client.release();
@@ -58,7 +56,6 @@ export interface ContentRow {
   creator: string | null;
   date: string | null;
   topics: string[] | null;
-  format: string | null;
   question_count: number | null;
   difficulty: string | null;
   types: string[] | null;
@@ -79,7 +76,6 @@ export async function insertContent(metadata: {
   creator?: string;
   date?: string;
   topics?: string[];
-  format?: string;
   questionCount?: number;
   difficulty?: string;
   types?: string[];
@@ -97,16 +93,15 @@ export async function insertContent(metadata: {
   try {
     const result = await client.query(`
       INSERT INTO content_items (
-        title, creator, date, topics, format, question_count, difficulty,
+        title, creator, date, topics, question_count, difficulty,
         types, description, answer, language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `, [
       metadata.title || null,
       metadata.creator || null,
       metadata.date || null,
       metadata.topics || [],
-      metadata.format || null,
       metadata.questionCount || null,
       metadata.difficulty || null,
       metadata.types || [],
@@ -160,7 +155,6 @@ export async function filterContent(filters: {
   topics?: string[];
   creator?: string;
   difficulty?: string;
-  format?: string;
 }) {
   const client = await pool.connect();
   try {
@@ -186,11 +180,6 @@ export async function filterContent(filters: {
       paramCount++;
     }
 
-    if (filters.format) {
-      query += ` AND format = $${paramCount}`;
-      params.push(filters.format);
-      paramCount++;
-    }
 
     query += ' ORDER BY created_at DESC';
 

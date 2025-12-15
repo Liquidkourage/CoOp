@@ -8,7 +8,6 @@ interface ContentItem {
   title: string;
   creator: string;
   date: string;
-  format?: string;
   topics?: string[];
 }
 
@@ -221,7 +220,6 @@ export default function AdminDeletePage() {
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>ID</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Title</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Date</th>
-                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Format</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Topics</th>
                       </tr>
                     </thead>
@@ -231,7 +229,6 @@ export default function AdminDeletePage() {
                           <td style={{ padding: '12px', fontSize: '12px', color: '#666' }}>{item.id}</td>
                           <td style={{ padding: '12px' }}>{item.title || '(No title)'}</td>
                           <td style={{ padding: '12px', color: '#666' }}>{item.date || '-'}</td>
-                          <td style={{ padding: '12px', color: '#666' }}>{item.format || '-'}</td>
                           <td style={{ padding: '12px', color: '#666' }}>
                             {item.topics && item.topics.length > 0 ? item.topics.join(', ') : '-'}
                           </td>

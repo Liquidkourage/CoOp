@@ -125,9 +125,7 @@ export default function ImportPage() {
                 } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
                   // Don't auto-map "category" here - it's handled above
                   mapping[header] = 'topics';
-                } else if (lower.includes('format') || (lower.includes('file') && lower.includes('format'))) {
-                  // Only map to format if it explicitly says "format" or "file format"
-                  mapping[header] = 'format';
+                // Format field removed - skip it
                 } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
                   mapping[header] = 'questionCount';
                 } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
@@ -198,9 +196,7 @@ export default function ImportPage() {
                 } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
                   // Don't auto-map "category" here - it's handled above
                   mapping[header] = 'topics';
-                } else if (lower.includes('format') || (lower.includes('file') && lower.includes('format'))) {
-                  // Only map to format if it explicitly says "format" or "file format"
-                  mapping[header] = 'format';
+                // Format field removed - skip it
                 } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
                   mapping[header] = 'questionCount';
                 } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
@@ -498,7 +494,7 @@ export default function ImportPage() {
             }}>
               <div><strong>Required:</strong> title (or will be auto-generated from question text)</div>
               <div><strong>Creator:</strong> Either map a "creator" column OR set a default creator below</div>
-              <div><strong>Optional:</strong> date, topics (comma-separated), format, questionCount, difficulty, types, description</div>
+              <div><strong>Optional:</strong> date, topics (comma-separated), questionCount, difficulty, types, description</div>
             </div>
             <div style={{
               background: '#e3f2fd',

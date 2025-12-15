@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
           creator: row.creator || undefined,
           date: row.date || undefined,
           topics: row.topics || undefined,
-          format: row.format || undefined,
           questionCount: row.question_count || undefined,
           difficulty: row.difficulty || undefined,
           types: row.types || undefined,

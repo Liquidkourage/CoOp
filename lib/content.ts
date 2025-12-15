@@ -6,7 +6,6 @@ export interface ContentMetadata {
   creator?: string;
   date?: string;
   topics?: string[];
-  format?: string;
   questionCount?: number;
   difficulty?: string;
   types?: string[];
@@ -119,7 +118,6 @@ export function filterContent(
     creator?: string;
     difficulty?: string;
     types?: string[];
-    format?: string;
   }
 ): ContentItem[] {
   return content.filter(item => {
@@ -145,10 +143,6 @@ export function filterContent(
       if (!filters.types.some(type => itemTypes.includes(type))) {
         return false;
       }
-    }
-    
-    if (filters.format && metadata.format !== filters.format) {
-      return false;
     }
     
     return true;
