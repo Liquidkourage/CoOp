@@ -82,57 +82,52 @@ export default function ImportPage() {
           }
           
           // Check if this row has answer options
+          // Check ALL columns for answer options (they might be in different columns)
           let foundAnswer = false;
+          let correctAnswerText = '';
           
-          // First, check the answer column if it exists
-          if (answerColumn && nextRow[answerColumn]) {
-            const answerText = String(nextRow[answerColumn]).trim();
-            if (answerText) {
-              // Check if this answer is marked as correct (has 'x' or checkmark)
-              const isCorrect = answerText.toLowerCase().includes('x') || 
-                               answerText.includes('✓') || 
-                               answerText.includes('√');
+          // Check all columns for answer-like content
+          for (const header of headers) {
+            if (header === questionColumn) continue;
+            const val = String(nextRow[header] || '').trim();
+            if (val && val.length > 1 && val.length < 200) {
+              // Check if it looks like an answer option (not a number, date, type, etc.)
+              const looksLikeAnswer = !/^\d+$/.test(val) && 
+                                     !/^\d{4}-\d{2}-\d{2}/.test(val) &&
+                                     !val.toLowerCase().includes('multiple') &&
+                                     !val.toLowerCase().includes('choice') &&
+                                     !header.toLowerCase().includes('type') &&
+                                     !header.toLowerCase().includes('date') &&
+                                     !header.toLowerCase().includes('creator');
               
-              // Clean the answer text
-              const cleanAnswer = answerText.replace(/[x✓√]/gi, '').trim();
-              if (cleanAnswer) {
-                answerOptions.push(cleanAnswer);
-                // If marked correct, note it
-                if (isCorrect && !row.answer) {
-                  row.answer = cleanAnswer;
+              if (looksLikeAnswer) {
+                // Check if this answer is marked as correct (has 'x' or checkmark)
+                const isCorrect = val.toLowerCase().includes('x') || 
+                                 val.includes('✓') || 
+                                 val.includes('√');
+                
+                // Clean the answer text (remove markers but keep the text)
+                const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+                
+                if (cleanAnswer) {
+                  // Add to options list (ALL options, including the correct one)
+                  answerOptions.push(cleanAnswer);
+                  
+                  // If marked correct, remember it
+                  if (isCorrect && !correctAnswerText) {
+                    correctAnswerText = cleanAnswer;
+                  }
+                  
+                  foundAnswer = true;
+                  // Don't break - continue checking other columns in case there are multiple options
                 }
-                foundAnswer = true;
               }
             }
           }
           
-          // If no answer column, check other columns for answer-like content
-          if (!foundAnswer) {
-            for (const header of headers) {
-              if (header === questionColumn) continue;
-              const val = String(nextRow[header] || '').trim();
-              if (val && val.length > 1 && val.length < 200) {
-                // Check if it looks like an answer option (not a number, date, etc.)
-                const looksLikeAnswer = !/^\d+$/.test(val) && 
-                                       !/^\d{4}-\d{2}-\d{2}/.test(val) &&
-                                       !val.toLowerCase().includes('multiple') &&
-                                       !val.toLowerCase().includes('choice');
-                if (looksLikeAnswer) {
-                  const isCorrect = val.toLowerCase().includes('x') || 
-                                   val.includes('✓') || 
-                                   val.includes('√');
-                  const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-                  if (cleanAnswer) {
-                    answerOptions.push(cleanAnswer);
-                    if (isCorrect && !row.answer) {
-                      row.answer = cleanAnswer;
-                    }
-                    foundAnswer = true;
-                    break;
-                  }
-                }
-              }
-            }
+          // Set the correct answer if we found one
+          if (correctAnswerText && !row.answer) {
+            row.answer = correctAnswerText;
           }
           
           if (foundAnswer) {
