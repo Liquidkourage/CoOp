@@ -67,8 +67,36 @@ export default function ImportPage() {
                                 rowType.includes('mc') || rowType === 'multiple choice';
       
       if (isMultipleChoice && hasQuestion) {
-        // Collect answer options from subsequent rows
+        // Collect answer options - start with the question row itself
         const answerOptions: string[] = [];
+        let correctAnswerText = '';
+        
+        // First, check the question row for an answer in the X Answer column or similar
+        // Find columns that might contain answers
+        const answerColumnNames = headers.filter(h => 
+          h.toLowerCase().includes('answer') || 
+          h.toLowerCase().includes('option') ||
+          h.toLowerCase().includes('x answer')
+        );
+        
+        // Check the question row for answer options
+        for (const header of answerColumnNames) {
+          const val = String(row[header] || '').trim();
+          if (val && val.length > 0) {
+            const isCorrect = val.toLowerCase().includes('x') || 
+                             val.includes('✓') || 
+                             val.includes('√');
+            const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+            if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
+              answerOptions.push(cleanAnswer);
+              if (isCorrect && !correctAnswerText) {
+                correctAnswerText = cleanAnswer;
+              }
+            }
+          }
+        }
+        
+        // Now collect answer options from subsequent rows
         let j = i + 1;
         
         // Look ahead for answer options (rows with answer column filled but no question)
@@ -87,53 +115,77 @@ export default function ImportPage() {
           let correctAnswerText = '';
           
           // Collect all potential answer values from this row
+          // Prioritize checking answer columns first (like "X Answer")
           const potentialAnswers: Array<{text: string, isCorrect: boolean, column: string}> = [];
           
-          // Check all columns for answer-like content
-          for (const header of headers) {
-            if (header === questionColumn) continue;
-            
+          // First, check answer-specific columns (like "X Answer")
+          for (const header of answerColumnNames) {
             const val = String(nextRow[header] || '').trim();
-            if (!val || val.length === 0) continue;
-            
-            // Skip obvious non-answer columns
-            const headerLower = header.toLowerCase();
-            if (headerLower.includes('type') || 
-                headerLower.includes('date') || 
-                headerLower.includes('creator') ||
-                headerLower.includes('category') ||
-                headerLower.includes('topic') ||
-                headerLower.includes('source')) {
-              continue;
+            if (val && val.length > 0 && val.length < 200) {
+              const isCorrect = val.toLowerCase().includes('x') || 
+                               val.includes('✓') || 
+                               val.includes('√');
+              const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+              if (cleanAnswer) {
+                potentialAnswers.push({
+                  text: cleanAnswer,
+                  isCorrect: isCorrect,
+                  column: header
+                });
+              }
             }
-            
-            // Skip if it's clearly not an answer (pure numbers, dates, etc.)
-            if (/^\d+$/.test(val) || /^\d{4}-\d{2}-\d{2}/.test(val)) {
-              continue;
-            }
-            
-            // Skip if it contains question-related keywords
-            if (val.toLowerCase().includes('multiple') || 
-                val.toLowerCase().includes('choice') ||
-                val.toLowerCase().includes('question')) {
-              continue;
-            }
-            
-            // If we get here, it might be an answer option
-            // Check if this answer is marked as correct (has 'x' or checkmark)
-            const isCorrect = val.toLowerCase().includes('x') || 
-                             val.includes('✓') || 
-                             val.includes('√');
-            
-            // Clean the answer text (remove markers but keep the text)
-            const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-            
-            if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
-              potentialAnswers.push({
-                text: cleanAnswer,
-                isCorrect: isCorrect,
-                column: header
-              });
+          }
+          
+          // If no answers found in answer columns, check other columns
+          if (potentialAnswers.length === 0) {
+            for (const header of headers) {
+              if (header === questionColumn) continue;
+              
+              const val = String(nextRow[header] || '').trim();
+              if (!val || val.length === 0) continue;
+              
+              // Skip obvious non-answer columns
+              const headerLower = header.toLowerCase();
+              if (headerLower.includes('type') || 
+                  headerLower.includes('date') || 
+                  headerLower.includes('creator') ||
+                  headerLower.includes('category') ||
+                  headerLower.includes('topic') ||
+                  headerLower.includes('source') ||
+                  headerLower.includes('points') ||
+                  headerLower.includes('script') ||
+                  headerLower.includes('label') ||
+                  headerLower.includes('display') ||
+                  headerLower.includes('clues') ||
+                  headerLower.includes('media')) {
+                continue;
+              }
+              
+              // Skip if it's clearly not an answer (pure numbers, dates, etc.)
+              if (/^\d+$/.test(val) || /^\d{4}-\d{2}-\d{2}/.test(val)) {
+                continue;
+              }
+              
+              // Skip if it contains question-related keywords
+              if (val.toLowerCase().includes('multiple') || 
+                  val.toLowerCase().includes('choice') ||
+                  val.toLowerCase().includes('question')) {
+                continue;
+              }
+              
+              // If we get here, it might be an answer option
+              const isCorrect = val.toLowerCase().includes('x') || 
+                               val.includes('✓') || 
+                               val.includes('√');
+              const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+              
+              if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
+                potentialAnswers.push({
+                  text: cleanAnswer,
+                  isCorrect: isCorrect,
+                  column: header
+                });
+              }
             }
           }
           
@@ -173,9 +225,9 @@ export default function ImportPage() {
           // Update the question column with question + options
           row[questionColumn] = `${questionText}\n\nOptions:\n${optionsText}`;
           
-          // Ensure we have an answer
-          if (!row.answer && answerOptions.length > 0) {
-            row.answer = answerOptions[0]; // Default to first option if none marked
+          // Set the correct answer if we found one, otherwise default to first
+          if (!row.answer) {
+            row.answer = correctAnswerText || answerOptions[0];
           }
         }
       }
