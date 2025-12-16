@@ -86,43 +86,67 @@ export default function ImportPage() {
           let foundAnswer = false;
           let correctAnswerText = '';
           
+          // Collect all potential answer values from this row
+          const potentialAnswers: Array<{text: string, isCorrect: boolean, column: string}> = [];
+          
           // Check all columns for answer-like content
           for (const header of headers) {
             if (header === questionColumn) continue;
+            
             const val = String(nextRow[header] || '').trim();
-            if (val && val.length > 1 && val.length < 200) {
-              // Check if it looks like an answer option (not a number, date, type, etc.)
-              const looksLikeAnswer = !/^\d+$/.test(val) && 
-                                     !/^\d{4}-\d{2}-\d{2}/.test(val) &&
-                                     !val.toLowerCase().includes('multiple') &&
-                                     !val.toLowerCase().includes('choice') &&
-                                     !header.toLowerCase().includes('type') &&
-                                     !header.toLowerCase().includes('date') &&
-                                     !header.toLowerCase().includes('creator');
-              
-              if (looksLikeAnswer) {
-                // Check if this answer is marked as correct (has 'x' or checkmark)
-                const isCorrect = val.toLowerCase().includes('x') || 
-                                 val.includes('✓') || 
-                                 val.includes('√');
-                
-                // Clean the answer text (remove markers but keep the text)
-                const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-                
-                if (cleanAnswer) {
-                  // Add to options list (ALL options, including the correct one)
-                  answerOptions.push(cleanAnswer);
-                  
-                  // If marked correct, remember it
-                  if (isCorrect && !correctAnswerText) {
-                    correctAnswerText = cleanAnswer;
-                  }
-                  
-                  foundAnswer = true;
-                  // Don't break - continue checking other columns in case there are multiple options
-                }
-              }
+            if (!val || val.length === 0) continue;
+            
+            // Skip obvious non-answer columns
+            const headerLower = header.toLowerCase();
+            if (headerLower.includes('type') || 
+                headerLower.includes('date') || 
+                headerLower.includes('creator') ||
+                headerLower.includes('category') ||
+                headerLower.includes('topic') ||
+                headerLower.includes('source')) {
+              continue;
             }
+            
+            // Skip if it's clearly not an answer (pure numbers, dates, etc.)
+            if (/^\d+$/.test(val) || /^\d{4}-\d{2}-\d{2}/.test(val)) {
+              continue;
+            }
+            
+            // Skip if it contains question-related keywords
+            if (val.toLowerCase().includes('multiple') || 
+                val.toLowerCase().includes('choice') ||
+                val.toLowerCase().includes('question')) {
+              continue;
+            }
+            
+            // If we get here, it might be an answer option
+            // Check if this answer is marked as correct (has 'x' or checkmark)
+            const isCorrect = val.toLowerCase().includes('x') || 
+                             val.includes('✓') || 
+                             val.includes('√');
+            
+            // Clean the answer text (remove markers but keep the text)
+            const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+            
+            if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
+              potentialAnswers.push({
+                text: cleanAnswer,
+                isCorrect: isCorrect,
+                column: header
+              });
+            }
+          }
+          
+          // If we found potential answers, add them all
+          if (potentialAnswers.length > 0) {
+            // Add all answers to the options list
+            potentialAnswers.forEach(potential => {
+              answerOptions.push(potential.text);
+              if (potential.isCorrect && !correctAnswerText) {
+                correctAnswerText = potential.text;
+              }
+            });
+            foundAnswer = true;
           }
           
           // Set the correct answer if we found one
