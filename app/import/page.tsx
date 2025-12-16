@@ -36,6 +36,137 @@ export default function ImportPage() {
   const hasTrivnowConfig = currentUser ? !!localStorage.getItem(`trivnow-config-${currentUser}`) : false;
   const hasExcelConfig = currentUser ? !!localStorage.getItem(`excel-config-${currentUser}`) : false;
 
+  // Group multiple-choice questions with their answer options
+  const groupMultipleChoiceQuestions = (rawRows: any[], headers: string[]): any[] => {
+    const groupedRows: any[] = [];
+    const processedIndices = new Set<number>();
+    
+    // Find columns that might indicate question type or answer options
+    const typeColumn = headers.find(h => 
+      h.toLowerCase().includes('type') && 
+      !h.toLowerCase().includes('question')
+    );
+    const questionColumn = headers.find(h => 
+      h.toLowerCase().includes('question')
+    );
+    const answerColumn = headers.find(h => 
+      (h.toLowerCase().includes('answer') || 
+       h.toLowerCase().includes('option')) &&
+      !h.toLowerCase().includes('correct')
+    );
+    
+    for (let i = 0; i < rawRows.length; i++) {
+      if (processedIndices.has(i)) continue;
+      
+      const row = { ...rawRows[i] }; // Copy row
+      const rowType = typeColumn ? String(row[typeColumn] || '').toLowerCase() : '';
+      const hasQuestion = questionColumn && row[questionColumn] && String(row[questionColumn]).trim();
+      
+      // Check if this is a multiple-choice question
+      const isMultipleChoice = rowType.includes('multiple') || rowType.includes('choice') || 
+                                rowType.includes('mc') || rowType === 'multiple choice';
+      
+      if (isMultipleChoice && hasQuestion) {
+        // Collect answer options from subsequent rows
+        const answerOptions: string[] = [];
+        let j = i + 1;
+        
+        // Look ahead for answer options (rows with answer column filled but no question)
+        while (j < rawRows.length) {
+          const nextRow = rawRows[j];
+          const nextHasQuestion = questionColumn && nextRow[questionColumn] && String(nextRow[questionColumn]).trim();
+          
+          // Stop if we hit another question row
+          if (nextHasQuestion) {
+            break;
+          }
+          
+          // Check if this row has answer options
+          let foundAnswer = false;
+          
+          // First, check the answer column if it exists
+          if (answerColumn && nextRow[answerColumn]) {
+            const answerText = String(nextRow[answerColumn]).trim();
+            if (answerText) {
+              // Check if this answer is marked as correct (has 'x' or checkmark)
+              const isCorrect = answerText.toLowerCase().includes('x') || 
+                               answerText.includes('✓') || 
+                               answerText.includes('√');
+              
+              // Clean the answer text
+              const cleanAnswer = answerText.replace(/[x✓√]/gi, '').trim();
+              if (cleanAnswer) {
+                answerOptions.push(cleanAnswer);
+                // If marked correct, note it
+                if (isCorrect && !row.answer) {
+                  row.answer = cleanAnswer;
+                }
+                foundAnswer = true;
+              }
+            }
+          }
+          
+          // If no answer column, check other columns for answer-like content
+          if (!foundAnswer) {
+            for (const header of headers) {
+              if (header === questionColumn) continue;
+              const val = String(nextRow[header] || '').trim();
+              if (val && val.length > 1 && val.length < 200) {
+                // Check if it looks like an answer option (not a number, date, etc.)
+                const looksLikeAnswer = !/^\d+$/.test(val) && 
+                                       !/^\d{4}-\d{2}-\d{2}/.test(val) &&
+                                       !val.toLowerCase().includes('multiple') &&
+                                       !val.toLowerCase().includes('choice');
+                if (looksLikeAnswer) {
+                  const isCorrect = val.toLowerCase().includes('x') || 
+                                   val.includes('✓') || 
+                                   val.includes('√');
+                  const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
+                  if (cleanAnswer) {
+                    answerOptions.push(cleanAnswer);
+                    if (isCorrect && !row.answer) {
+                      row.answer = cleanAnswer;
+                    }
+                    foundAnswer = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          
+          if (foundAnswer) {
+            processedIndices.add(j);
+            j++;
+          } else {
+            // No more answer options found, stop looking
+            break;
+          }
+        }
+        
+        // Combine answer options into the question text
+        if (answerOptions.length > 0) {
+          const questionText = String(row[questionColumn] || '').trim();
+          const optionsText = answerOptions.map((opt, idx) => 
+            `${String.fromCharCode(65 + idx)}. ${opt}`
+          ).join('\n');
+          
+          // Update the question column with question + options
+          row[questionColumn] = `${questionText}\n\nOptions:\n${optionsText}`;
+          
+          // Ensure we have an answer
+          if (!row.answer && answerOptions.length > 0) {
+            row.answer = answerOptions[0]; // Default to first option if none marked
+          }
+        }
+      }
+      
+      groupedRows.push(row);
+    }
+    
+    return groupedRows;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!currentUser) {
       alert('Please select or create a user first.');
@@ -408,13 +539,18 @@ export default function ImportPage() {
         
         if (jsonData.length > 0) {
           const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-          const rows = jsonData.slice(1).map((row: any) => {
+          
+          // Convert raw rows to objects
+          const rawRows = jsonData.slice(1).map((row: any) => {
             const obj: any = {};
             headers.forEach((header, idx) => {
               obj[header] = row[idx] !== undefined ? row[idx] : '';
             });
             return obj;
           }).filter((row: any) => Object.values(row).some((v: any) => v !== ''));
+          
+          // Group multiple-choice questions with their answer options
+          const rows = groupMultipleChoiceQuestions(rawRows, headers);
           
           const { imported, errors, debugInfo } = await processRows(rows);
           
