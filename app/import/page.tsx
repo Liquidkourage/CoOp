@@ -71,27 +71,31 @@ export default function ImportPage() {
         const answerOptions: string[] = [];
         let correctAnswerText = '';
         
-        // First, check the question row for an answer in the X Answer column or similar
-        // Find columns that might contain answers
-        const answerColumnNames = headers.filter(h => 
-          h.toLowerCase().includes('answer') || 
-          h.toLowerCase().includes('option') ||
-          h.toLowerCase().includes('x answer')
+        // Find the X column (marks correct answers) and Answer column (contains answer text)
+        const xColumn = headers.find(h => 
+          h.toLowerCase() === 'x' || 
+          h.toLowerCase().startsWith('x ') ||
+          h.toLowerCase() === 'correct'
+        );
+        const answerColumn = headers.find(h => 
+          (h.toLowerCase().includes('answer') && !h.toLowerCase().includes('x')) ||
+          h.toLowerCase().includes('option')
         );
         
         // Check the question row for answer options
-        for (const header of answerColumnNames) {
-          const val = String(row[header] || '').trim();
-          if (val && val.length > 0) {
-            const isCorrect = val.toLowerCase().includes('x') || 
-                             val.includes('✓') || 
-                             val.includes('√');
-            const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-            if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
-              answerOptions.push(cleanAnswer);
-              if (isCorrect && !correctAnswerText) {
-                correctAnswerText = cleanAnswer;
-              }
+        if (answerColumn) {
+          const answerVal = String(row[answerColumn] || '').trim();
+          if (answerVal && answerVal.length > 0 && answerVal.length < 200) {
+            // Check if this row's X column marks it as correct
+            const isCorrect = xColumn && (
+              String(row[xColumn] || '').toLowerCase().includes('x') ||
+              String(row[xColumn] || '').includes('✓') ||
+              String(row[xColumn] || '').includes('√')
+            );
+            
+            answerOptions.push(answerVal);
+            if (isCorrect && !correctAnswerText) {
+              correctAnswerText = answerVal;
             }
           }
         }
@@ -115,28 +119,29 @@ export default function ImportPage() {
           let correctAnswerText = '';
           
           // Collect all potential answer values from this row
-          // Prioritize checking answer columns first (like "X Answer")
+          // Check if there's an Answer column and X column structure
           const potentialAnswers: Array<{text: string, isCorrect: boolean, column: string}> = [];
           
-          // First, check answer-specific columns (like "X Answer")
-          for (const header of answerColumnNames) {
-            const val = String(nextRow[header] || '').trim();
-            if (val && val.length > 0 && val.length < 200) {
-              const isCorrect = val.toLowerCase().includes('x') || 
-                               val.includes('✓') || 
-                               val.includes('√');
-              const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-              if (cleanAnswer) {
-                potentialAnswers.push({
-                  text: cleanAnswer,
-                  isCorrect: isCorrect,
-                  column: header
-                });
-              }
+          // First, check if there's a separate Answer column (and X column for marking)
+          if (answerColumn) {
+            const answerVal = String(nextRow[answerColumn] || '').trim();
+            if (answerVal && answerVal.length > 0 && answerVal.length < 200) {
+              // Check if the X column marks this as correct
+              const isCorrect = !!(xColumn && (
+                String(nextRow[xColumn] || '').toLowerCase().includes('x') ||
+                String(nextRow[xColumn] || '').includes('✓') ||
+                String(nextRow[xColumn] || '').includes('√')
+              ));
+              
+              potentialAnswers.push({
+                text: answerVal,
+                isCorrect: isCorrect,
+                column: answerColumn
+              });
             }
           }
           
-          // If no answers found in answer columns, check other columns
+          // If no answers found in Answer column, check other columns
           if (potentialAnswers.length === 0) {
             for (const header of headers) {
               if (header === questionColumn) continue;
