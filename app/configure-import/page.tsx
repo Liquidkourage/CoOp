@@ -314,11 +314,16 @@ export default function ConfigureImportPage() {
         mapped.title = mapped.question.substring(0, 100) + (mapped.question.length > 100 ? '...' : '');
       }
       
+      // Validation: question is required, creator can be provided via default during import
+      const hasQuestion = !!(mapped.question || mapped.description);
+      const hasCreator = !!mapped.creator;
+      
       testResults.push({
         rowIndex: idx + 1,
         original: row,
         mapped: mapped,
-        isValid: !!(mapped.question && mapped.creator)
+        isValid: hasQuestion, // Only question is strictly required (creator can be default)
+        warnings: hasQuestion && !hasCreator ? ['Creator not mapped - will need to set default creator during import'] : []
       });
     });
     
@@ -338,12 +343,21 @@ export default function ConfigureImportPage() {
     }
 
     // Validate required mappings
-    const hasQuestion = Object.values(columnMapping).includes('question');
-    const hasCreator = Object.values(columnMapping).includes('creator');
+    const hasQuestion = Object.values(columnMapping).includes('question') || 
+                        Object.values(columnMapping).includes('description');
     
-    if (!hasQuestion || !hasCreator) {
-      alert('Please map at least "Question" and "Creator" fields. These are required.');
+    if (!hasQuestion) {
+      alert('Please map at least the "Question" field. This is required. Creator can be set as default during import.');
       return;
+    }
+    
+    // Warn if creator is not mapped (but allow saving)
+    const hasCreator = Object.values(columnMapping).includes('creator');
+    if (!hasCreator) {
+      const proceed = confirm('No "Creator" field is mapped. You will need to set a default creator when importing. Continue saving this configuration?');
+      if (!proceed) {
+        return;
+      }
     }
 
     const config: ImportConfig = {
@@ -635,10 +649,10 @@ export default function ConfigureImportPage() {
             </div>
 
             <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
-              <strong>⚠️ Required Fields:</strong> Make sure you've mapped at least:
+              <strong>⚠️ Required Fields:</strong>
               <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
-                <li><strong>Question</strong> - The actual trivia question text</li>
-                <li><strong>Creator</strong> - Who created/wrote this content</li>
+                <li><strong>Question</strong> - The actual trivia question text (required)</li>
+                <li><strong>Creator</strong> - Who created/wrote this content (can be set as default during import if not mapped)</li>
               </ul>
             </div>
 
@@ -667,26 +681,45 @@ export default function ConfigureImportPage() {
               Review how your data will be transformed. Make sure everything looks correct before saving.
             </p>
 
-            {testResults.map((result, idx) => (
+            {testResults.map((result, idx) => {
+              const hasWarnings = result.warnings && result.warnings.length > 0;
+              return (
               <div key={idx} style={{ 
                 marginBottom: '20px', 
                 padding: '15px', 
-                background: result.isValid ? '#d4edda' : '#f8d7da',
+                background: result.isValid ? (hasWarnings ? '#fff3cd' : '#d4edda') : '#f8d7da',
                 borderRadius: '6px',
-                border: `1px solid ${result.isValid ? '#c3e6cb' : '#f5c6cb'}`
+                border: `1px solid ${result.isValid ? (hasWarnings ? '#ffc107' : '#c3e6cb') : '#f5c6cb'}`
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <strong>Row {result.rowIndex}</strong>
                   <span style={{ 
                     padding: '4px 10px', 
                     borderRadius: '4px', 
-                    background: result.isValid ? '#28a745' : '#dc3545',
+                    background: result.isValid ? (hasWarnings ? '#ffc107' : '#28a745') : '#dc3545',
                     color: '#fff',
                     fontSize: '12px'
                   }}>
-                    {result.isValid ? '✓ Valid' : '✗ Invalid'}
+                    {result.isValid ? (hasWarnings ? '⚠️ Valid (with warnings)' : '✓ Valid') : '✗ Invalid'}
                   </span>
                 </div>
+                
+                {hasWarnings && (
+                  <div style={{ 
+                    marginBottom: '10px', 
+                    padding: '10px', 
+                    background: '#fff',
+                    borderRadius: '4px',
+                    border: '1px solid #ffc107'
+                  }}>
+                    <strong style={{ color: '#856404' }}>⚠️ Warnings:</strong>
+                    <ul style={{ margin: '5px 0 0 0', paddingLeft: '20px', color: '#856404' }}>
+                      {result.warnings.map((warning: string, wIdx: number) => (
+                        <li key={wIdx}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 
                 <div style={{ marginTop: '10px' }}>
                   <strong>Mapped Data:</strong>
@@ -703,7 +736,8 @@ export default function ConfigureImportPage() {
                   </pre>
                 </div>
               </div>
-            ))}
+            );
+            })}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button
