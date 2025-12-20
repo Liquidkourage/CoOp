@@ -120,7 +120,7 @@ export default function ConfigureImportPage() {
               setStep('preview');
             }
           },
-          error: (error) => {
+          error: (error: Error) => {
             alert(`Error parsing CSV: ${error.message}`);
           }
         });
@@ -134,7 +134,7 @@ export default function ConfigureImportPage() {
         
         if (jsonData.length > 0) {
           const excelHeaders = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-          const rows = jsonData.slice(1).map((row: any[]) => {
+          const rows = (jsonData.slice(1) as any[]).map((row: any[]) => {
             const obj: any = {};
             excelHeaders.forEach((header, idx) => {
               obj[header] = row[idx] !== undefined ? row[idx] : '';
