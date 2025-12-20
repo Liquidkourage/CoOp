@@ -22,6 +22,7 @@ export async function initDatabase() {
         types TEXT[],
         description TEXT,
         answer TEXT,
+        options TEXT[],
         language TEXT DEFAULT 'en',
         license TEXT,
         source TEXT,
@@ -37,6 +38,12 @@ export async function initDatabase() {
     await client.query(`
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS answer TEXT
+    `);
+
+    // Add options column if it doesn't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS options TEXT[]
     `);
 
     await client.query(`
@@ -61,6 +68,7 @@ export interface ContentRow {
   types: string[] | null;
   description: string | null;
   answer: string | null;
+  options: string[] | null;
   language: string | null;
   license: string | null;
   source: string | null;
@@ -82,6 +90,7 @@ export async function insertContent(metadata: {
   question?: string;
   description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
+  options?: string[];
   language?: string;
   license?: string;
   source?: string;
@@ -94,8 +103,8 @@ export async function insertContent(metadata: {
     const result = await client.query(`
       INSERT INTO content_items (
         title, creator, date, topics, question_count, difficulty,
-        types, description, answer, language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        types, description, answer, options, language, license, source, tags, files, file_paths
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `, [
       metadata.title || null,
@@ -107,6 +116,7 @@ export async function insertContent(metadata: {
       metadata.types || [],
       metadata.question || metadata.description || null, // Map 'question' to 'description' column
       metadata.answer || null,
+      metadata.options || [],
       metadata.language || 'en',
       metadata.license || null,
       metadata.source || null,

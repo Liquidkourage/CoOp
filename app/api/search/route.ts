@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
           questionCount: row.question_count || undefined,
           difficulty: row.difficulty || undefined,
           types: row.types || undefined,
-          description: row.description || undefined,
+          question: row.description || undefined,
+          description: row.description || undefined, // Backward compatibility
+          answer: row.answer || undefined,
+          options: row.options || undefined,
           language: row.language || undefined,
           license: row.license || undefined,
           source: row.source || undefined,

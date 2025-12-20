@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       question: metadata.question || metadata.description, // Support both 'question' and 'description'
       description: metadata.description || metadata.question, // Backward compatibility
       answer: metadata.correctAnswer || metadata.answer,
+      options: metadata.options, // Structured options array for multiple-choice questions
       language: metadata.language,
       license: metadata.license,
       source: metadata.source,

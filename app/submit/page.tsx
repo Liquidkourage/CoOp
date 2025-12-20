@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Navigation from '../components/Navigation';
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -109,6 +111,7 @@ export default function SubmitPage() {
         <div className="container">
           <h1>Submit Trivia Content</h1>
           <p>Share your trivia content with the community</p>
+          <Navigation />
         </div>
       </header>
 

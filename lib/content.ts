@@ -13,6 +13,7 @@ export interface ContentMetadata {
   description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
   correctAnswer?: string;
+  options?: string[]; // For multiple-choice questions: array of all answer options
   language?: string;
   license?: string;
   source?: string;

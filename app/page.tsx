@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Navigation from './components/Navigation';
 
 interface ContentItem {
   id: string;
@@ -17,6 +18,7 @@ interface ContentItem {
     question?: string;
     description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
     answer?: string;
+    options?: string[]; // For multiple-choice questions: array of all answer options
   };
   files: string[];
 }
@@ -157,12 +159,21 @@ export default function HomePage() {
     return content.filter(item => selectedItems.has(item.id));
   };
 
+  // Helper function to format options for display
+  const formatOptions = (options?: string[]): string => {
+    if (!options || options.length === 0) return '';
+    return options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join('\n');
+  };
+
   const renderQAPairs = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
       const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
+      const optionsText = item.metadata.options && item.metadata.options.length > 0 
+        ? '\nOptions:\n' + formatOptions(item.metadata.options) 
+        : '';
       const a = item.metadata.answer || 'No answer provided';
-      return `Q${idx + 1}: ${q}\nA${idx + 1}: ${a}\n`;
+      return `Q${idx + 1}: ${q}${optionsText}\nA${idx + 1}: ${a}\n`;
     }).join('\n');
     
     return (
@@ -201,6 +212,16 @@ export default function HomePage() {
               <div style={{ fontWeight: 'bold', color: '#0066cc', marginBottom: '8px' }}>
                 Q{idx + 1}: {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
+              {item.metadata.options && item.metadata.options.length > 0 && (
+                <div style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', color: '#666', fontSize: '13px' }}>
+                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>Options:</div>
+                  {item.metadata.options.map((opt, optIdx) => (
+                    <div key={optIdx} style={{ marginLeft: '10px' }}>
+                      {String.fromCharCode(65 + optIdx)}. {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ color: '#28a745', marginLeft: '20px' }}>
                 A{idx + 1}: {item.metadata.answer || 'No answer provided'}
               </div>
@@ -220,8 +241,11 @@ export default function HomePage() {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
       const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
+      const optionsText = item.metadata.options && item.metadata.options.length > 0 
+        ? '\n   ' + formatOptions(item.metadata.options).replace(/\n/g, '\n   ')
+        : '';
       const a = item.metadata.answer || 'No answer provided';
-      return `${idx + 1}. ${q}\n   Answer: ${a}\n`;
+      return `${idx + 1}. ${q}${optionsText}\n   Answer: ${a}\n`;
     }).join('\n');
     
     return (
@@ -259,6 +283,15 @@ export default function HomePage() {
               <div style={{ fontWeight: '600', marginBottom: '10px' }}>
                 {idx + 1}. {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
+              {item.metadata.options && item.metadata.options.length > 0 && (
+                <div style={{ marginLeft: '30px', marginTop: '8px', marginBottom: '10px', color: '#666' }}>
+                  {item.metadata.options.map((opt, optIdx) => (
+                    <div key={optIdx} style={{ marginBottom: '4px' }}>
+                      {String.fromCharCode(65 + optIdx)}. {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ marginLeft: '30px', color: '#555', fontStyle: 'italic' }}>
                 Answer: {item.metadata.answer || 'No answer provided'}
               </div>
@@ -272,9 +305,10 @@ export default function HomePage() {
   const renderSpreadsheet = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const csv = [
-      ['Question', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
+      ['Question', 'Options', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
       ...itemsToShow.map(item => [
         (item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/\t/g, ' '),
+        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
         (item.metadata.answer || '').replace(/\t/g, ' '),
         (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
         (item.metadata.creator || '').replace(/\t/g, ' '),
@@ -823,14 +857,7 @@ export default function HomePage() {
         <div className="container">
           <h1>Trivia Content Repository</h1>
           <p>A collaborative repository for trivia content creators</p>
-          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <Link href="/" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>Home</Link>
-            <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
-            <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV/Excel</Link>
-            <Link href="/configure-trivnow" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure TrivNow</Link>
-            <Link href="/configure-excel" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure Excel</Link>
-            <Link href="/admin/delete" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Admin: Delete</Link>
-          </nav>
+          <Navigation />
         </div>
       </header>
 

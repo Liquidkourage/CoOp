@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Papa from 'papaparse';
 import { useUser } from '../contexts/UserContext';
 import UserSelector from '../components/UserSelector';
+import Navigation from '../components/Navigation';
 
 export default function ConfigureTrivNowPage() {
   const { currentUser } = useUser();
@@ -144,16 +145,7 @@ export default function ConfigureTrivNowPage() {
         <div className="container">
           <h1>Configure TrivNow Format</h1>
           <p>Upload a sample TrivNow CSV to configure automatic detection and mapping</p>
-          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
-            <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
-            <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import CSV</Link>
-            <Link href="/configure-trivnow" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>⚙️ Configure TrivNow</Link>
-            <a href="/api/content" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Content</a>
-            <a href="/api/topics" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Topics</a>
-            <a href="/api/creators" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>API: Creators</a>
-            <a href="/api/db-init" target="_blank" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>DB Init</a>
-          </nav>
+          <Navigation />
         </div>
       </header>
 

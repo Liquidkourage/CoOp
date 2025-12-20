@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
             description: row.description || undefined, // Backward compatibility
             answer: row.answer || undefined,
             correctAnswer: row.answer || undefined,
+            options: row.options || undefined,
             language: row.language || undefined,
             license: row.license || undefined,
             source: row.source || undefined,

@@ -107,11 +107,7 @@ export default function AdminDeletePage() {
         <div className="container">
           <h1>Admin: Delete Content</h1>
           <p>Delete content by creator name</p>
-          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
-            <Link href="/admin/delete" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>Admin: Delete</Link>
-            <Link href="/import" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Import</Link>
-          </nav>
+          <Navigation />
         </div>
       </header>
 

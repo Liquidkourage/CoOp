@@ -7,6 +7,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
 import UserSelector from '../components/UserSelector';
+import Navigation from '../components/Navigation';
 
 interface ImportResult {
   success: boolean;
@@ -27,14 +28,62 @@ export default function ImportPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [trivnowConfig, setTrivnowConfig] = useState<any>(null);
   const [excelConfig, setExcelConfig] = useState<any>(null);
+  const [savedConfigs, setSavedConfigs] = useState<any[]>([]);
+  const [selectedConfig, setSelectedConfig] = useState<string>('');
   const [isTrivnowFormat, setIsTrivnowFormat] = useState(false);
   const [isExcelFormat, setIsExcelFormat] = useState(false);
   const [fileType, setFileType] = useState<'csv' | 'excel' | null>(null);
   const [defaultCreator, setDefaultCreator] = useState<string>('');
 
+  // Load all saved configurations for current user
+  useEffect(() => {
+    if (currentUser) {
+      const configs: any[] = [];
+      // Load legacy configs
+      const savedTrivnowConfig = localStorage.getItem(`trivnow-config-${currentUser}`);
+      const savedExcelConfig = localStorage.getItem(`excel-config-${currentUser}`);
+      
+      if (savedTrivnowConfig) {
+        try {
+          const config = JSON.parse(savedTrivnowConfig);
+          configs.push({ ...config, formatName: 'TrivNow CSV', fileType: 'csv', isLegacy: true });
+        } catch (e) {
+          console.error('Failed to parse TrivNow config:', e);
+        }
+      }
+      
+      if (savedExcelConfig) {
+        try {
+          const config = JSON.parse(savedExcelConfig);
+          configs.push({ ...config, formatName: 'Excel Format', fileType: 'excel', isLegacy: true });
+        } catch (e) {
+          console.error('Failed to parse Excel config:', e);
+        }
+      }
+      
+      // Load new flexible configs
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`import-config-${currentUser}-`)) {
+          try {
+            const config = JSON.parse(localStorage.getItem(key) || '{}');
+            if (config.username === currentUser) {
+              configs.push(config);
+            }
+          } catch (e) {
+            console.error('Error loading config:', e);
+          }
+        }
+      }
+      
+      setSavedConfigs(configs);
+    }
+  }, [currentUser]);
+
   // Check which formats are configured for current user
   const hasTrivnowConfig = currentUser ? !!localStorage.getItem(`trivnow-config-${currentUser}`) : false;
   const hasExcelConfig = currentUser ? !!localStorage.getItem(`excel-config-${currentUser}`) : false;
+  const hasAnyConfig = savedConfigs.length > 0;
 
   // Group multiple-choice questions with their answer options
   const groupMultipleChoiceQuestions = (rawRows: any[], headers: string[]): any[] => {
@@ -220,15 +269,13 @@ export default function ImportPage() {
           }
         }
         
-        // Combine answer options into the question text
+        // Store answer options in options array (structured data)
         if (answerOptions.length > 0) {
-          const questionText = String(row[questionColumn] || '').trim();
-          const optionsText = answerOptions.map((opt, idx) => 
-            `${String.fromCharCode(65 + idx)}. ${opt}`
-          ).join('\n');
+          // Store options as a structured array
+          row.options = answerOptions;
           
-          // Update the question column with question + options
-          row[questionColumn] = `${questionText}\n\nOptions:\n${optionsText}`;
+          // Keep question text clean (don't append options)
+          // The options will be stored separately in the options field
           
           // Set the correct answer if we found one, otherwise default to first
           if (!row.answer) {
@@ -268,6 +315,24 @@ export default function ImportPage() {
       
       let trivnowConfig = null;
       let excelConfig = null;
+      let matchedConfig = null;
+      
+      // Try to find a matching saved configuration
+      if (currentUser && savedConfigs.length > 0) {
+        const fileHeaders: string[] = [];
+        
+        // We'll populate fileHeaders after parsing, but check configs that match file type
+        const matchingConfigs = savedConfigs.filter(config => {
+          if (isExcel && config.fileType === 'excel') return true;
+          if (isCsv && config.fileType === 'csv') return true;
+          return false;
+        });
+        
+        // If a config is selected, use it
+        if (selectedConfig) {
+          matchedConfig = matchingConfigs.find(c => c.formatName === selectedConfig);
+        }
+      }
       
       if (savedTrivnowConfig) {
         try {
@@ -308,17 +373,48 @@ export default function ImportPage() {
             
             setPreview(rows.slice(0, 5));
             
-            // Check if this looks like configured Excel format
+            // Check if this matches a saved configuration
             const headerLower = headers.map(h => h.toLowerCase().trim());
-            const isExcelFormat = excelConfig && excelConfig.detectionPatterns && 
-              excelConfig.detectionPatterns.some((pattern: string) => 
-                headerLower.includes(pattern.toLowerCase().trim())
-              );
-            setIsExcelFormat(!!isExcelFormat);
+            let matchedConfig = null;
             
-            // Start with Excel config mapping if available, otherwise empty
-            const mapping: Record<string, string> = isExcelFormat && excelConfig.columnMapping 
-              ? { ...excelConfig.columnMapping }
+            // Check selected config first
+            if (selectedConfig) {
+              matchedConfig = savedConfigs.find(c => c.formatName === selectedConfig && c.fileType === 'excel');
+            }
+            
+            // If no selected config, try to auto-detect
+            if (!matchedConfig) {
+              matchedConfig = savedConfigs.find(config => {
+                if (config.fileType !== 'excel') return false;
+                if (config.detectionPatterns && config.detectionPatterns.length > 0) {
+                  return config.detectionPatterns.some((pattern: string) => 
+                    headerLower.includes(pattern.toLowerCase().trim())
+                  );
+                }
+                return false;
+              });
+            }
+            
+            // Fall back to legacy Excel config
+            if (!matchedConfig && excelConfig) {
+              const isExcelFormat = excelConfig.detectionPatterns && 
+                excelConfig.detectionPatterns.some((pattern: string) => 
+                  headerLower.includes(pattern.toLowerCase().trim())
+                );
+              if (isExcelFormat) {
+                matchedConfig = excelConfig;
+              }
+            }
+            
+            setIsExcelFormat(!!matchedConfig);
+            if (matchedConfig) {
+              setExcelConfig(matchedConfig);
+              setSelectedConfig(matchedConfig.formatName || 'Excel Format');
+            }
+            
+            // Start with matched config mapping if available, otherwise empty
+            const mapping: Record<string, string> = matchedConfig && matchedConfig.columnMapping 
+              ? { ...matchedConfig.columnMapping }
               : {};
             
               // Auto-map fields
@@ -465,15 +561,23 @@ export default function ImportPage() {
         const metadata: any = {};
         
         // First pass: collect all values for each mapped field
-        const fieldValues: Record<string, string[]> = {};
+        const fieldValues: Record<string, any[]> = {};
         
         Object.keys(columnMapping).forEach(col => {
           const mappedField = columnMapping[col];
-          if (!mappedField) return;
+          if (!mappedField || mappedField === 'skip') return;
           
           const value = row[col];
           
-          if (value !== undefined && value !== null && value.toString().trim()) {
+          // Handle options specially - preserve original value type for date handling
+          if (mappedField === 'options') {
+            if (value !== undefined && value !== null) {
+              if (!fieldValues[mappedField]) {
+                fieldValues[mappedField] = [];
+              }
+              fieldValues[mappedField].push(value); // Keep original value for date detection
+            }
+          } else if (value !== undefined && value !== null && value.toString().trim()) {
             if (!fieldValues[mappedField]) {
               fieldValues[mappedField] = [];
             }
@@ -510,11 +614,82 @@ export default function ImportPage() {
             const answerValue = values[0];
             metadata.answer = answerValue;
             metadata.correctAnswer = answerValue;
+          } else if (mappedField === 'options') {
+            // Handle options - can be from multiple columns (e.g., date columns mapped to options)
+            // Collect all option values, handling dates and other formats
+            const optionValues: string[] = [];
+            values.forEach((val: any) => {
+              // Convert value to string, handling dates
+              let optionStr = '';
+              
+              // Check if it's a Date object
+              if (val instanceof Date) {
+                // Format date as YYYY-MM-DD
+                optionStr = val.toISOString().split('T')[0];
+              } else if (val !== null && val !== undefined) {
+                // Check if it's an Excel date serial number (numeric dates)
+                const numVal = typeof val === 'number' ? val : parseFloat(String(val));
+                if (!isNaN(numVal) && numVal > 25569 && numVal < 1000000) {
+                  // Excel date serial number (days since 1900-01-01)
+                  // Excel epoch: January 1, 1900 = 1
+                  // JavaScript epoch: January 1, 1970 = 25569 in Excel
+                  const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899 (Excel's epoch)
+                  const jsDate = new Date(excelEpoch.getTime() + (numVal - 1) * 86400 * 1000);
+                  optionStr = jsDate.toISOString().split('T')[0];
+                } else {
+                  // Regular string value or other format
+                  const strVal = String(val).trim();
+                  
+                  // Check if it looks like a date string (YYYY-MM-DD, MM/DD/YYYY, etc.)
+                  const dateMatch = strVal.match(/^\d{4}-\d{2}-\d{2}$/) || 
+                                   strVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/) ||
+                                   strVal.match(/^\d{1,2}-\d{1,2}-\d{4}$/);
+                  
+                  if (dateMatch) {
+                    // Try to parse and format as YYYY-MM-DD
+                    const parsedDate = new Date(strVal);
+                    if (!isNaN(parsedDate.getTime())) {
+                      optionStr = parsedDate.toISOString().split('T')[0];
+                    } else {
+                      optionStr = strVal;
+                    }
+                  } else {
+                    optionStr = strVal;
+                  }
+                }
+              } else {
+                optionStr = String(val || '').trim();
+              }
+              
+              // Split by comma if multiple options in one cell
+              if (optionStr.includes(',')) {
+                optionStr.split(',').forEach(opt => {
+                  const trimmed = opt.trim();
+                  if (trimmed && !optionValues.includes(trimmed)) {
+                    optionValues.push(trimmed);
+                  }
+                });
+              } else if (optionStr && !optionValues.includes(optionStr)) {
+                optionValues.push(optionStr);
+              }
+            });
+            
+            // Merge with existing options if any (from groupMultipleChoiceQuestions)
+            if (row.options && Array.isArray(row.options) && row.options.length > 0) {
+              metadata.options = [...new Set([...row.options, ...optionValues])];
+            } else {
+              metadata.options = optionValues;
+            }
           } else {
             // For other fields, use the first value (or concatenate if it makes sense)
             metadata[mappedField] = values[0];
           }
         });
+
+        // Handle options array if present (from groupMultipleChoiceQuestions) and not already processed
+        if (!metadata.options && row.options && Array.isArray(row.options) && row.options.length > 0) {
+          metadata.options = row.options;
+        }
 
         // Generate title from question if not mapped
         if (!metadata.title) {
@@ -690,6 +865,7 @@ export default function ImportPage() {
         <div className="container">
           <h1>Import CSV/Excel</h1>
           <p>Import trivia content from a CSV or Excel (.xlsx) file</p>
+          <Navigation />
           <UserSelector />
           {!currentUser && (
             <div style={{
@@ -703,13 +879,6 @@ export default function ImportPage() {
               ⚠️ Please select or create a user to import content. You'll only see formats you've configured.
             </div>
           )}
-          <nav style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <Link href="/" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Home</Link>
-            <Link href="/submit" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>Submit Content</Link>
-            <Link href="/import" style={{ color: '#ff6600', textDecoration: 'none', fontWeight: '600' }}>Import CSV/Excel</Link>
-            <Link href="/configure-trivnow" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure TrivNow</Link>
-            <Link href="/configure-excel" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>⚙️ Configure Excel</Link>
-          </nav>
         </div>
       </header>
 
@@ -759,6 +928,51 @@ export default function ImportPage() {
             borderRadius: '8px',
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
+            {hasAnyConfig && (
+              <div style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
+                  Use Saved Configuration (Optional)
+                </label>
+                <select
+                  value={selectedConfig}
+                  onChange={(e) => {
+                    setSelectedConfig(e.target.value);
+                    if (e.target.value) {
+                      const config = savedConfigs.find(c => c.formatName === e.target.value);
+                      if (config) {
+                        setColumnMapping(config.columnMapping || {});
+                        if (config.fileType === 'excel') {
+                          setIsExcelFormat(true);
+                          setExcelConfig(config);
+                        } else if (config.fileType === 'csv') {
+                          setIsTrivnowFormat(true);
+                          setTrivnowConfig(config);
+                        }
+                      }
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '16px',
+                    background: '#fff'
+                  }}
+                >
+                  <option value="">-- Select a saved format (or configure new) --</option>
+                  {savedConfigs.map((config, idx) => (
+                    <option key={idx} value={config.formatName}>
+                      {config.formatName} ({config.fileType?.toUpperCase() || 'Unknown'})
+                    </option>
+                  ))}
+                </select>
+                <p style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                  💡 Don't have a configuration? <Link href="/configure-import" style={{ color: '#0066cc' }}>Create one here</Link>
+                </p>
+              </div>
+            )}
+
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
                 Select CSV or Excel File
@@ -767,14 +981,22 @@ export default function ImportPage() {
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
+                disabled={!currentUser}
                 style={{
                   width: '100%',
                   padding: '10px',
                   border: '1px solid #ddd',
                   borderRadius: '4px',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  cursor: currentUser ? 'pointer' : 'not-allowed',
+                  opacity: currentUser ? 1 : 0.6
                 }}
               />
+              {!hasAnyConfig && currentUser && (
+                <p style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                  💡 <Link href="/configure-import" style={{ color: '#0066cc' }}>Configure a format</Link> to make imports easier!
+                </p>
+              )}
             </div>
 
             {preview.length > 0 && (
