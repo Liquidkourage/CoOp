@@ -314,7 +314,7 @@ export default function ConfigureImportPage() {
         mapped.title = mapped.question.substring(0, 100) + (mapped.question.length > 100 ? '...' : '');
       }
       
-      // Validation: question is required, creator can be provided via default during import
+      // Validation: question is required, creator will be auto-filled from logged-in user
       const hasQuestion = !!(mapped.question || mapped.description);
       const hasCreator = !!mapped.creator;
       
@@ -322,8 +322,8 @@ export default function ConfigureImportPage() {
         rowIndex: idx + 1,
         original: row,
         mapped: mapped,
-        isValid: hasQuestion, // Only question is strictly required (creator can be default)
-        warnings: hasQuestion && !hasCreator ? ['Creator not mapped - will need to set default creator during import'] : []
+        isValid: hasQuestion, // Only question is strictly required (creator auto-filled from logged-in user)
+        warnings: [] // No warnings - creator will be auto-filled from logged-in user
       });
     });
     
@@ -347,17 +347,8 @@ export default function ConfigureImportPage() {
                         Object.values(columnMapping).includes('description');
     
     if (!hasQuestion) {
-      alert('Please map at least the "Question" field. This is required. Creator can be set as default during import.');
+      alert('Please map at least the "Question" field. This is required. Creator will automatically use the logged-in user.');
       return;
-    }
-    
-    // Warn if creator is not mapped (but allow saving)
-    const hasCreator = Object.values(columnMapping).includes('creator');
-    if (!hasCreator) {
-      const proceed = confirm('No "Creator" field is mapped. You will need to set a default creator when importing. Continue saving this configuration?');
-      if (!proceed) {
-        return;
-      }
     }
 
     const config: ImportConfig = {
@@ -648,11 +639,11 @@ export default function ConfigureImportPage() {
               })}
             </div>
 
-            <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
-              <strong>⚠️ Required Fields:</strong>
+            <div style={{ padding: '15px', background: '#e7f3ff', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
+              <strong>ℹ️ Required Fields:</strong>
               <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
                 <li><strong>Question</strong> - The actual trivia question text (required)</li>
-                <li><strong>Creator</strong> - Who created/wrote this content (can be set as default during import if not mapped)</li>
+                <li><strong>Creator</strong> - Will automatically use the logged-in user if not mapped</li>
               </ul>
             </div>
 
@@ -796,7 +787,8 @@ export default function ConfigureImportPage() {
               <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
                 <li>File Type: <strong>{fileType?.toUpperCase()}</strong></li>
                 <li>Columns Mapped: <strong>{Object.keys(columnMapping).filter(k => columnMapping[k] && columnMapping[k] !== 'skip').length}</strong></li>
-                <li>Required Fields: {columnMapping && Object.values(columnMapping).includes('question') && Object.values(columnMapping).includes('creator') ? '✓ Complete' : '✗ Missing'}</li>
+                <li>Required Fields: {columnMapping && (Object.values(columnMapping).includes('question') || Object.values(columnMapping).includes('description')) ? '✓ Complete' : '✗ Missing'}</li>
+                <li>Creator: {columnMapping && Object.values(columnMapping).includes('creator') ? '✓ Mapped' : 'ℹ️ Will use logged-in user'}</li>
               </ul>
             </div>
 
