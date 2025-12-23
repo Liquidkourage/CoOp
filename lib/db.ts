@@ -262,13 +262,13 @@ export async function getAllTopics() {
       FROM content_items
       WHERE topics IS NOT NULL 
         AND array_length(topics, 1) > 0
-        AND unnest(topics) IS NOT NULL
-        AND trim(unnest(topics)) != ''
       ORDER BY topic
     `);
-    const topics = result.rows.map(row => row.topic).filter((topic): topic is string => 
-      topic !== null && topic !== undefined && topic.trim() !== ''
-    );
+    const topics = result.rows
+      .map(row => row.topic)
+      .filter((topic): topic is string => 
+        topic !== null && topic !== undefined && typeof topic === 'string' && topic.trim() !== ''
+      );
     return topics;
   } finally {
     client.release();
