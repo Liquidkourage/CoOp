@@ -11,6 +11,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/rounds', label: 'Rounds', icon: '📋' },
+  { href: '/sets', label: 'Sets', icon: '📚' },
   { href: '/submit', label: 'Submit Content', icon: '➕' },
   { href: '/import', label: 'Import CSV/Excel', icon: '📥' },
   { href: '/configure-import', label: 'Configure Import Format', icon: '⚙️' },

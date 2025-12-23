@@ -84,6 +84,74 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_content_round ON content_items(round);
       CREATE INDEX IF NOT EXISTS idx_content_set ON content_items(set);
     `);
+
+    // Create rounds table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rounds (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        creator TEXT,
+        date DATE,
+        description TEXT,
+        topics TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create sets table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sets (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        creator TEXT,
+        date DATE,
+        description TEXT,
+        topics TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create junction tables for many-to-many relationships
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS question_rounds (
+        question_id INTEGER REFERENCES content_items(id) ON DELETE CASCADE,
+        round_id INTEGER REFERENCES rounds(id) ON DELETE CASCADE,
+        sequence INTEGER DEFAULT 0,
+        PRIMARY KEY (question_id, round_id)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS question_sets (
+        question_id INTEGER REFERENCES content_items(id) ON DELETE CASCADE,
+        set_id INTEGER REFERENCES sets(id) ON DELETE CASCADE,
+        sequence INTEGER DEFAULT 0,
+        PRIMARY KEY (question_id, set_id)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS round_sets (
+        round_id INTEGER REFERENCES rounds(id) ON DELETE CASCADE,
+        set_id INTEGER REFERENCES sets(id) ON DELETE CASCADE,
+        sequence INTEGER DEFAULT 0,
+        PRIMARY KEY (round_id, set_id)
+      )
+    `);
+
+    // Create indexes for junction tables
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_question_rounds_question ON question_rounds(question_id);
+      CREATE INDEX IF NOT EXISTS idx_question_rounds_round ON question_rounds(round_id);
+      CREATE INDEX IF NOT EXISTS idx_question_sets_question ON question_sets(question_id);
+      CREATE INDEX IF NOT EXISTS idx_question_sets_set ON question_sets(set_id);
+      CREATE INDEX IF NOT EXISTS idx_round_sets_round ON round_sets(round_id);
+      CREATE INDEX IF NOT EXISTS idx_round_sets_set ON round_sets(set_id);
+      CREATE INDEX IF NOT EXISTS idx_rounds_creator ON rounds(creator);
+      CREATE INDEX IF NOT EXISTS idx_sets_creator ON sets(creator);
+    `);
   } finally {
     client.release();
   }
@@ -285,6 +353,258 @@ export async function getAllCreators() {
       ORDER BY creator
     `);
     return result.rows.map(row => row.creator) as string[];
+  } finally {
+    client.release();
+  }
+}
+
+// Round and Set interfaces
+export interface RoundRow {
+  id: number;
+  name: string;
+  creator: string | null;
+  date: string | null;
+  description: string | null;
+  topics: string[] | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SetRow {
+  id: number;
+  name: string;
+  creator: string | null;
+  date: string | null;
+  description: string | null;
+  topics: string[] | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Round and Set CRUD operations
+export async function insertRound(metadata: {
+  name: string;
+  creator?: string;
+  date?: string;
+  description?: string;
+  topics?: string[];
+}) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      INSERT INTO rounds (name, creator, date, description, topics)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [
+      metadata.name,
+      metadata.creator || null,
+      metadata.date || null,
+      metadata.description || null,
+      metadata.topics || []
+    ]);
+    return result.rows[0] as RoundRow;
+  } finally {
+    client.release();
+  }
+}
+
+export async function insertSet(metadata: {
+  name: string;
+  creator?: string;
+  date?: string;
+  description?: string;
+  topics?: string[];
+}) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      INSERT INTO sets (name, creator, date, description, topics)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [
+      metadata.name,
+      metadata.creator || null,
+      metadata.date || null,
+      metadata.description || null,
+      metadata.topics || []
+    ]);
+    return result.rows[0] as SetRow;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getAllRounds() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM rounds ORDER BY created_at DESC');
+    return result.rows as RoundRow[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getAllSets() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM sets ORDER BY created_at DESC');
+    return result.rows as SetRow[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getRoundById(id: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM rounds WHERE id = $1', [id]);
+    return result.rows[0] as RoundRow | undefined;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSetById(id: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM sets WHERE id = $1', [id]);
+    return result.rows[0] as SetRow | undefined;
+  } finally {
+    client.release();
+  }
+}
+
+// Junction table operations
+export async function addQuestionToRound(questionId: number, roundId: number, sequence: number = 0) {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      INSERT INTO question_rounds (question_id, round_id, sequence)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (question_id, round_id) DO UPDATE SET sequence = $3
+    `, [questionId, roundId, sequence]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function addQuestionToSet(questionId: number, setId: number, sequence: number = 0) {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      INSERT INTO question_sets (question_id, set_id, sequence)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (question_id, set_id) DO UPDATE SET sequence = $3
+    `, [questionId, setId, sequence]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function addRoundToSet(roundId: number, setId: number, sequence: number = 0) {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      INSERT INTO round_sets (round_id, set_id, sequence)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (round_id, set_id) DO UPDATE SET sequence = $3
+    `, [roundId, setId, sequence]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getQuestionsInRound(roundId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT ci.*, qr.sequence
+      FROM content_items ci
+      JOIN question_rounds qr ON ci.id = qr.question_id
+      WHERE qr.round_id = $1
+      ORDER BY qr.sequence, ci.created_at
+    `, [roundId]);
+    return result.rows as (ContentRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getQuestionsInSet(setId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT ci.*, qs.sequence
+      FROM content_items ci
+      JOIN question_sets qs ON ci.id = qs.question_id
+      WHERE qs.set_id = $1
+      ORDER BY qs.sequence, ci.created_at
+    `, [setId]);
+    return result.rows as (ContentRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getRoundsInSet(setId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT r.*, rs.sequence
+      FROM rounds r
+      JOIN round_sets rs ON r.id = rs.round_id
+      WHERE rs.set_id = $1
+      ORDER BY rs.sequence, r.created_at
+    `, [setId]);
+    return result.rows as (RoundRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getRoundsForQuestion(questionId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT r.*, qr.sequence
+      FROM rounds r
+      JOIN question_rounds qr ON r.id = qr.round_id
+      WHERE qr.question_id = $1
+      ORDER BY qr.sequence, r.created_at
+    `, [questionId]);
+    return result.rows as (RoundRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSetsForQuestion(questionId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT s.*, qs.sequence
+      FROM sets s
+      JOIN question_sets qs ON s.id = qs.set_id
+      WHERE qs.question_id = $1
+      ORDER BY qs.sequence, s.created_at
+    `, [questionId]);
+    return result.rows as (SetRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSetsForRound(roundId: number) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT s.*, rs.sequence
+      FROM sets s
+      JOIN round_sets rs ON s.id = rs.set_id
+      WHERE rs.round_id = $1
+      ORDER BY rs.sequence, s.created_at
+    `, [roundId]);
+    return result.rows as (SetRow & { sequence: number })[];
   } finally {
     client.release();
   }

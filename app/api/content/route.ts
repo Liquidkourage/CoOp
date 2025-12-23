@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllContent, filterContent, initDatabase, pool } from '@/lib/db';
+import { getAllContent, filterContent, initDatabase, pool, getRoundsForQuestion, getSetsForQuestion } from '@/lib/db';
 import { loadAllContent, filterContent as filterFileContent } from '@/lib/content';
 
 export async function GET(request: NextRequest) {
@@ -63,36 +63,44 @@ export async function GET(request: NextRequest) {
         params.push(limit, offset);
         const result = await client.query(query, params);
         
-        content = result.rows.map(row => ({
-          id: `db-${row.id}`,
-          path: row.file_paths?.[0]?.split('/').slice(0, -1).join('/') || '',
-          metadata: {
-            title: row.title || undefined, // Deprecated - kept for backward compatibility
-            creator: row.creator || undefined,
-            date: row.date || undefined,
-            topics: row.topics || undefined,
-            questionCount: row.question_count || undefined,
-            difficulty: row.difficulty || undefined,
-            types: row.types || undefined,
-            question: row.description || undefined,
-            description: row.description || undefined, // Backward compatibility
-            answer: row.answer || undefined,
-            correctAnswer: row.answer || undefined,
-            options: row.options || undefined,
-            points: row.points || undefined,
-            timer: row.timer || undefined,
-            round: row.round || undefined,
-            set: row.set || undefined,
-            explanation: row.explanation || undefined,
-            notes: row.notes || undefined,
-            alternateAnswers: row.alternate_answers || undefined,
-            language: row.language || undefined,
-            license: row.license || undefined,
-            source: row.source || undefined,
-            tags: row.tags || undefined,
-            files: row.files || undefined,
-          },
-          files: row.file_paths || []
+        // Fetch round/set relationships for each question
+        content = await Promise.all(result.rows.map(async (row) => {
+          const rounds = await getRoundsForQuestion(row.id);
+          const sets = await getSetsForQuestion(row.id);
+          
+          return {
+            id: `db-${row.id}`,
+            path: row.file_paths?.[0]?.split('/').slice(0, -1).join('/') || '',
+            metadata: {
+              title: row.title || undefined, // Deprecated - kept for backward compatibility
+              creator: row.creator || undefined,
+              date: row.date || undefined,
+              topics: row.topics || undefined,
+              questionCount: row.question_count || undefined,
+              difficulty: row.difficulty || undefined,
+              types: row.types || undefined,
+              question: row.description || undefined,
+              description: row.description || undefined, // Backward compatibility
+              answer: row.answer || undefined,
+              correctAnswer: row.answer || undefined,
+              options: row.options || undefined,
+              points: row.points || undefined,
+              timer: row.timer || undefined,
+              round: row.round || undefined, // Legacy field - kept for backward compatibility
+              set: row.set || undefined, // Legacy field - kept for backward compatibility
+              rounds: rounds.map(r => ({ id: r.id, name: r.name, sequence: r.sequence })),
+              sets: sets.map(s => ({ id: s.id, name: s.name, sequence: s.sequence })),
+              explanation: row.explanation || undefined,
+              notes: row.notes || undefined,
+              alternateAnswers: row.alternate_answers || undefined,
+              language: row.language || undefined,
+              license: row.license || undefined,
+              source: row.source || undefined,
+              tags: row.tags || undefined,
+              files: row.files || undefined,
+            },
+            files: row.file_paths || []
+          };
         }));
       } finally {
         client.release();
