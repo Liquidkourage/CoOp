@@ -4,7 +4,17 @@ A collaborative repository for trivia content creators to share their work in an
 
 ## Overview
 
+**This repository is focused on INDIVIDUAL QUESTIONS, not quiz sets or events.** Questions are reusable building blocks that hosts can combine into their own quiz structures.
+
 This repository welcomes trivia content in **any format**: text files, slides, images, spreadsheets, PDFs, presentations, and more. We believe that great trivia content comes in many forms, and we want to make it easy for creators to share their work.
+
+### Core Philosophy
+
+- **Individual Questions**: Each entry is a single, reusable question
+- **Flexible Import**: Import questions from any format (CSV, Excel, JSON, etc.)
+- **Host Control**: Hosts select and combine questions into their own quiz sets
+- **Reusability**: Questions can be used across multiple quiz nights and rounds
+- **Metadata Preservation**: Round/set information from imports is preserved as optional metadata
 
 ## Repository Structure
 

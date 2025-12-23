@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-This document provides a deep analysis of all possible data fields for a pub quiz content repository, ranked from **mandatory** to **incredibly optional**. The analysis considers the unique needs of pub quiz hosts, the live event nature of pub quizzes, and the various use cases for content management.
+This document provides a deep analysis of all possible data fields for a pub quiz content repository, ranked from **mandatory** to **incredibly optional**. 
+
+**⚠️ IMPORTANT: This repository is focused on INDIVIDUAL QUESTIONS, not quiz sets or events.** While questions may include metadata about rounds or sets (from imports), the core unit of content is the individual question. Questions are reusable building blocks that hosts can combine into their own quiz sets.
 
 ---
 
@@ -13,11 +15,18 @@ This document provides a deep analysis of all possible data fields for a pub qui
 1. **Live Performance**: Questions are read aloud, not just displayed
 2. **Time Constraints**: Questions often have time limits
 3. **Scoring Systems**: Points vary by difficulty, round, or question type
-4. **Round Structure**: Questions are organized into themed rounds
+4. **Question Reusability**: Individual questions can be used across multiple quiz nights and rounds
 5. **Media Integration**: Images, audio, and video are common
 6. **Host Flexibility**: Hosts need to adapt questions to their audience
-7. **Reusability**: Content may be used across multiple events
+7. **Content Building Blocks**: Questions are combined by hosts into their own quiz sets
 8. **Attribution**: Credit to creators is important in the community
+
+### Repository Focus: Individual Questions
+
+- **Core Unit**: Each entry is an individual question
+- **Reusability**: Questions can be used in multiple quiz sets/rounds
+- **Metadata**: Round/set fields are optional metadata from imports, not required
+- **Host Control**: Hosts select and combine questions into their own quiz structures
 
 ---
 
@@ -150,16 +159,20 @@ This document provides a deep analysis of all possible data fields for a pub qui
 - **Example**: "2025-12-15"
 - **Notes**: Can be auto-set to creation date
 
-#### 9. **Round/Set Identifier** (`round` or `set`)
-- **Why Important**: Organizes questions into quiz events or rounds
+#### 9. **Round/Set Identifier** (`round` or `set`) - **OPTIONAL METADATA**
+- **Why Optional**: These are metadata from imports, not core to the question itself
+- **Repository Focus**: This repository stores **individual questions**, not quiz sets
 - **Use Cases**:
-  - Grouping questions for a quiz night
-  - Round organization
-  - Event planning
-  - Exporting complete quiz sets
+  - Preserving context from imported files (where question came from)
+  - Filtering/searching by original round/set
+  - Historical reference (which quiz this question was originally part of)
 - **Format**: String
 - **Example**: "December 2025 Quiz Night", "Round 1: History"
-- **Notes**: Could be separate fields: `round` (within quiz) and `set` (quiz event)
+- **Notes**: 
+  - Questions are reusable - a single question can be used in multiple quiz sets
+  - Round/set fields are optional metadata, not required
+  - Hosts combine questions into their own quiz structures
+  - Could be separate fields: `round` (within quiz) and `set` (quiz event)
 
 ---
 
@@ -324,35 +337,20 @@ This document provides a deep analysis of all possible data fields for a pub qui
 - **Example**: "2025-12-16T10:30:00Z"
 - **Notes**: System can auto-track this
 
-#### 24. **Question Number** (`questionNumber`)
-- **Why Optional**: Position within a round/set
-- **Use Cases**:
-  - Round organization
-  - Sequential ordering
-  - Export formatting
-- **Format**: Integer
-- **Example**: `3` (third question in round)
-- **Notes**: Can be derived from order, but explicit is clearer
+#### 24. **Question Number** (`questionNumber`) - **NOT NEEDED FOR QUESTION REPOSITORY**
+- **Why Not Needed**: This repository focuses on individual questions, not quiz sets
+- **Status**: Not implemented - questions are standalone, not part of a fixed sequence
+- **Notes**: If needed for exports, hosts can number questions when creating their quiz sets
 
-#### 25. **Round Name** (`roundName`)
-- **Why Optional**: Name of the round this question belongs to
-- **Use Cases**:
-  - Round organization
-  - Display formatting
-  - Quiz structure
-- **Format**: String
-- **Example**: "Round 1: History", "Picture Round", "Music Round"
-- **Notes**: May overlap with topics but more specific
+#### 25. **Round Name** (`roundName`) - **REDUNDANT WITH `round`**
+- **Why Not Needed**: Already covered by `round` field
+- **Status**: Use `round` instead
+- **Notes**: This field is redundant - use `round` for round names
 
-#### 26. **Quiz Event** (`quizEvent` or `eventName`)
-- **Why Optional**: Links question to specific quiz night/event
-- **Use Cases**:
-  - Event planning
-  - Historical tracking
-  - Reusability tracking
-- **Format**: String
-- **Example**: "December 2025 Quiz Night", "Holiday Special 2025"
-- **Notes**: Useful for hosts who run regular events
+#### 26. **Quiz Event** (`quizEvent` or `eventName`) - **REDUNDANT WITH `set`**
+- **Why Not Needed**: Already covered by `set` field
+- **Status**: Use `set` instead
+- **Notes**: This field is redundant - use `set` for quiz event names
 
 #### 27. **Status** (`status`)
 - **Why Optional**: Workflow management (draft, published, archived)
@@ -667,10 +665,10 @@ For advanced features:
 - **`mediaType`**: Only relevant if `files` contains media
 
 ### Field Relationships
-- **`round`** + **`questionNumber`** = Complete round organization
 - **`difficulty`** + **`points`** = Scoring system
 - **`topics`** + **`tags`** = Comprehensive categorization
 - **`creator`** + **`date`** + **`version`** = Content tracking
+- **`round`** + **`set`** = Optional metadata from imports (not core to question)
 
 ---
 
@@ -683,7 +681,7 @@ For advanced features:
 - Options (for MC), Difficulty, Date
 
 ### Phase 3: Important (Nice to Have)
-- Points, Files, Tags, Round/Set
+- Points, Files, Tags, Round/Set (optional metadata from imports)
 
 ### Phase 4: Enhanced (Future)
 - Timer, Explanation, Source, Related Content
