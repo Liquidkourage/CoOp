@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Save to database
     const dbRecord = await insertContent({
-      title: metadata.title,
+      title: metadata.title, // Optional - deprecated for individual questions
       creator: metadata.creator,
       date: metadata.date,
       topics: metadata.topics,
@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
       description: metadata.description || metadata.question, // Backward compatibility
       answer: metadata.correctAnswer || metadata.answer,
       options: metadata.options, // Structured options array for multiple-choice questions
+      points: metadata.points,
+      timer: metadata.timer,
+      round: metadata.round,
+      set: metadata.set,
+      explanation: metadata.explanation,
+      notes: metadata.notes,
+      alternateAnswers: metadata.alternateAnswers,
       language: metadata.language,
       license: metadata.license,
       source: metadata.source,

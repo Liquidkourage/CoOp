@@ -46,11 +46,43 @@ export async function initDatabase() {
       ADD COLUMN IF NOT EXISTS options TEXT[]
     `);
 
+    // Add new fields: points, timer, round, set, explanation
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS points INTEGER
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS timer INTEGER
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS round TEXT
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS set TEXT
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS explanation TEXT
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS notes TEXT
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS alternate_answers TEXT[]
+    `);
+
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_content_creator ON content_items(creator);
       CREATE INDEX IF NOT EXISTS idx_content_topics ON content_items USING GIN(topics);
       CREATE INDEX IF NOT EXISTS idx_content_date ON content_items(date);
       CREATE INDEX IF NOT EXISTS idx_content_difficulty ON content_items(difficulty);
+      CREATE INDEX IF NOT EXISTS idx_content_round ON content_items(round);
+      CREATE INDEX IF NOT EXISTS idx_content_set ON content_items(set);
     `);
   } finally {
     client.release();
@@ -69,6 +101,13 @@ export interface ContentRow {
   description: string | null;
   answer: string | null;
   options: string[] | null;
+  points: number | null;
+  timer: number | null;
+  round: string | null;
+  set: string | null;
+  explanation: string | null;
+  notes: string | null;
+  alternate_answers: string[] | null;
   language: string | null;
   license: string | null;
   source: string | null;
@@ -91,6 +130,11 @@ export async function insertContent(metadata: {
   description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
   options?: string[];
+  points?: number;
+  timer?: number;
+  round?: string;
+  set?: string;
+  explanation?: string;
   language?: string;
   license?: string;
   source?: string;
@@ -103,8 +147,9 @@ export async function insertContent(metadata: {
     const result = await client.query(`
       INSERT INTO content_items (
         title, creator, date, topics, question_count, difficulty,
-        types, description, answer, options, language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        types, description, answer, options, points, timer, round, set, explanation, notes, alternate_answers,
+        language, license, source, tags, files, file_paths
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *
     `, [
       metadata.title || null,
@@ -117,6 +162,13 @@ export async function insertContent(metadata: {
       metadata.question || metadata.description || null, // Map 'question' to 'description' column
       metadata.answer || null,
       metadata.options || [],
+      metadata.points || null,
+      metadata.timer || null,
+      metadata.round || null,
+      metadata.set || null,
+      metadata.explanation || null,
+      metadata.notes || null,
+      metadata.alternateAnswers || [],
       metadata.language || 'en',
       metadata.license || null,
       metadata.source || null,

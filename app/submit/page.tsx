@@ -8,7 +8,6 @@ import Navigation from '../components/Navigation';
 export default function SubmitPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    title: '',
     creator: '',
     date: new Date().toISOString().split('T')[0],
     topics: '',
@@ -16,7 +15,15 @@ export default function SubmitPage() {
     difficulty: '',
     types: [] as string[],
     question: '',
-    description: '', // Deprecated, kept for backward compatibility
+    answer: '',
+    alternateAnswers: '',
+    points: '',
+    timer: '',
+    round: '',
+    set: '',
+    explanation: '',
+    notes: '',
+    source: '',
   });
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +68,7 @@ export default function SubmitPage() {
       const formDataToSend = new FormData();
       
       const metadata = {
-        title: formData.title.trim() || undefined, // Optional - will use description if not provided
+        // Title removed - not needed for individual questions (only for sets/rounds)
         creator: formData.creator,
         date: formData.date,
         topics: formData.topics.split(',').map(t => t.trim()).filter(Boolean),
@@ -69,13 +76,17 @@ export default function SubmitPage() {
         difficulty: formData.difficulty || undefined,
         types: formData.types,
         question: formData.question.trim(), // Required
-        description: formData.question.trim(), // Backward compatibility
+        description: formData.question.trim(), // Backward compatibility (database column)
+        answer: formData.answer.trim() || undefined,
+        alternateAnswers: formData.alternateAnswers.split(',').map(a => a.trim()).filter(Boolean),
+        points: formData.points ? parseInt(formData.points) : undefined,
+        timer: formData.timer ? parseInt(formData.timer) : undefined,
+        round: formData.round.trim() || undefined,
+        set: formData.set.trim() || undefined,
+        explanation: formData.explanation.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
+        source: formData.source.trim() || undefined,
       };
-      
-      // If no title provided, use question as title (for display purposes)
-      if (!metadata.title) {
-        metadata.title = metadata.question.substring(0, 100) + (metadata.question.length > 100 ? '...' : '');
-      }
       
       formDataToSend.append('metadata', JSON.stringify(metadata));
       
@@ -141,27 +152,6 @@ export default function SubmitPage() {
             borderRadius: '8px',
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Title (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px'
-                }}
-                placeholder="Optional: Only needed for quiz sets. Individual questions don't need titles."
-              />
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                For individual questions, leave blank. Title is only useful for quiz sets or collections.
-              </p>
-            </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
@@ -318,7 +308,188 @@ export default function SubmitPage() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Files *
+                Answer
+              </label>
+              <input
+                type="text"
+                value={formData.answer}
+                onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px'
+                }}
+                placeholder="The correct answer"
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                  Points
+                </label>
+                <input
+                  type="number"
+                  value={formData.points}
+                  onChange={(e) => setFormData({ ...formData, points: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="e.g., 10"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                  Time Limit (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={formData.timer}
+                  onChange={(e) => setFormData({ ...formData, timer: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="e.g., 30"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                  Round
+                </label>
+                <input
+                  type="text"
+                  value={formData.round}
+                  onChange={(e) => setFormData({ ...formData, round: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="e.g., Round 1: History"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                  Quiz Set/Event
+                </label>
+                <input
+                  type="text"
+                  value={formData.set}
+                  onChange={(e) => setFormData({ ...formData, set: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="e.g., December 2025 Quiz Night"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Explanation
+              </label>
+              <textarea
+                value={formData.explanation}
+                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                placeholder="Explanation of why the answer is correct..."
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Host Notes
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                placeholder="Additional notes for hosts (delivery instructions, context, etc.)..."
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Alternative Answers (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={formData.alternateAnswers}
+                onChange={(e) => setFormData({ ...formData, alternateAnswers: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px'
+                }}
+                placeholder="e.g., Ireland, Republic of Ireland, Eire"
+              />
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                Acceptable variations of the correct answer (for answer validation flexibility)
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Source
+              </label>
+              <input
+                type="text"
+                value={formData.source}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px'
+                }}
+                placeholder="e.g., Wikipedia, BBC News, Original Research"
+              />
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                Original source of the information (for attribution and fact-checking)
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Media Files (Images, Audio, Video) *
               </label>
               <input
                 type="file"

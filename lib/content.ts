@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 export interface ContentMetadata {
-  title?: string;
+  title?: string; // Deprecated: not needed for individual questions (only for sets/rounds)
   creator?: string;
   date?: string;
   topics?: string[];
@@ -14,11 +14,18 @@ export interface ContentMetadata {
   answer?: string;
   correctAnswer?: string;
   options?: string[]; // For multiple-choice questions: array of all answer options
+  points?: number; // Point value for scoring
+  timer?: number; // Time limit in seconds
+  round?: string; // Round name (e.g., "Round 1: History")
+  set?: string; // Quiz set/event name (e.g., "December 2025 Quiz Night")
+  explanation?: string; // Explanation of the answer
+  notes?: string; // Host notes or additional context
+  alternateAnswers?: string[]; // Alternative acceptable answers (e.g., ["Ireland", "Republic of Ireland", "Eire"])
   language?: string;
   license?: string;
-  source?: string;
+  source?: string; // Original source of information
   tags?: string[];
-  files?: string[];
+  files?: string[]; // Media files (images, audio, video)
   relatedContent?: string[];
   version?: string;
   lastUpdated?: string;

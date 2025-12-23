@@ -8,7 +8,7 @@ interface ContentItem {
   id: string;
   path: string;
   metadata: {
-    title?: string;
+    title?: string; // Deprecated: not needed for individual questions
     creator?: string;
     date?: string;
     topics?: string[];
@@ -18,7 +18,17 @@ interface ContentItem {
     question?: string;
     description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
     answer?: string;
+    alternateAnswers?: string[]; // Alternative acceptable answers
     options?: string[]; // For multiple-choice questions: array of all answer options
+    points?: number;
+    timer?: number;
+    round?: string;
+    set?: string;
+    explanation?: string;
+    notes?: string; // Host notes
+    source?: string; // Original source of information
+    tags?: string[];
+    files?: string[]; // Media files
   };
   files: string[];
 }
@@ -145,6 +155,165 @@ export default function HomePage() {
 
   const deselectAll = () => {
     setSelectedItems(new Set());
+  };
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAsCSV = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const csv = [
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join(','),
+      ...itemsToShow.map(item => [
+        `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.round || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.set || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`
+      ].join(','))
+    ].join('\n');
+    downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  };
+
+  const downloadAsExcel = async () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    // For Excel, we'll use CSV format (can be opened in Excel)
+    // In a production app, you'd use a library like xlsx to create proper Excel files
+    const csv = [
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join('\t'),
+      ...itemsToShow.map(item => [
+        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
+        (item.metadata.answer || '').replace(/\t/g, ' '),
+        (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
+        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
+        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
+        (item.metadata.creator || '').replace(/\t/g, ' '),
+        (item.metadata.date || '').replace(/\t/g, ' '),
+        (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
+        (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
+        (item.metadata.round || '').replace(/\t/g, ' '),
+        (item.metadata.set || '').replace(/\t/g, ' '),
+        (item.metadata.explanation || '').replace(/\t/g, ' '),
+        (item.metadata.notes || '').replace(/\t/g, ' '),
+        (item.metadata.source || '').replace(/\t/g, ' ')
+      ].join('\t'))
+    ].join('\n');
+    downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
+  };
+
+  const downloadAsJSON = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const json = JSON.stringify(itemsToShow.map(item => ({
+      question: item.metadata.question || item.metadata.description,
+      answer: item.metadata.answer,
+      options: item.metadata.options,
+      topics: item.metadata.topics,
+      creator: item.metadata.creator,
+      date: item.metadata.date,
+      points: item.metadata.points,
+      timer: item.metadata.timer,
+      round: item.metadata.round,
+      set: item.metadata.set,
+      explanation: item.metadata.explanation,
+      difficulty: item.metadata.difficulty,
+      types: item.metadata.types,
+      tags: item.metadata.tags
+    })), null, 2);
+    downloadFile(json, `trivia-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+  };
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAsCSV = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const csv = [
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join(','),
+      ...itemsToShow.map(item => [
+        `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.round || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.set || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`
+      ].join(','))
+    ].join('\n');
+    downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  };
+
+  const downloadAsExcel = async () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    // For Excel, we'll use TSV format (can be opened in Excel)
+    const tsv = [
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join('\t'),
+      ...itemsToShow.map(item => [
+        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
+        (item.metadata.answer || '').replace(/\t/g, ' '),
+        (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
+        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
+        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
+        (item.metadata.creator || '').replace(/\t/g, ' '),
+        (item.metadata.date || '').replace(/\t/g, ' '),
+        (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
+        (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
+        (item.metadata.round || '').replace(/\t/g, ' '),
+        (item.metadata.set || '').replace(/\t/g, ' '),
+        (item.metadata.explanation || '').replace(/\t/g, ' '),
+        (item.metadata.notes || '').replace(/\t/g, ' '),
+        (item.metadata.source || '').replace(/\t/g, ' ')
+      ].join('\t'))
+    ].join('\n');
+    downloadFile(tsv, `trivia-export-${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
+  };
+
+  const downloadAsJSON = () => {
+    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
+    const json = JSON.stringify(itemsToShow.map(item => ({
+      question: item.metadata.question || item.metadata.description,
+      answer: item.metadata.answer,
+      options: item.metadata.options,
+      topics: item.metadata.topics,
+      creator: item.metadata.creator,
+      date: item.metadata.date,
+      points: item.metadata.points,
+      timer: item.metadata.timer,
+      round: item.metadata.round,
+      set: item.metadata.set,
+      explanation: item.metadata.explanation,
+      difficulty: item.metadata.difficulty,
+      types: item.metadata.types,
+      tags: item.metadata.tags
+    })), null, 2);
+    downloadFile(json, `trivia-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
   };
 
   const copyToClipboard = (text: string) => {
@@ -320,20 +489,36 @@ export default function HomePage() {
       <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2>Spreadsheet View (Tab-Separated)</h2>
-          <button
-            onClick={() => copyToClipboard(csv)}
-            style={{
-              padding: '10px 20px',
-              background: '#28a745',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            📋 Copy All (Paste into Excel)
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => copyToClipboard(csv)}
+              style={{
+                padding: '10px 20px',
+                background: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              📋 Copy All
+            </button>
+            <button
+              onClick={downloadAsExcel}
+              style={{
+                padding: '10px 20px',
+                background: '#0066cc',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              💾 Download Excel
+            </button>
+          </div>
         </div>
         <div style={{
           background: '#f8f9fa',
@@ -753,19 +938,41 @@ export default function HomePage() {
     const json = JSON.stringify(itemsToShow.map(item => ({
       question: item.metadata.question || item.metadata.description || item.metadata.title || 'No question',
       answer: item.metadata.answer || 'No answer',
+      alternateAnswers: item.metadata.alternateAnswers || [],
+      options: item.metadata.options || [],
       topics: item.metadata.topics || [],
       creator: item.metadata.creator || '',
-      date: item.metadata.date || ''
+      date: item.metadata.date || '',
+      points: item.metadata.points,
+      timer: item.metadata.timer,
+      round: item.metadata.round,
+      set: item.metadata.set,
+      explanation: item.metadata.explanation,
+      notes: item.metadata.notes,
+      source: item.metadata.source,
+      difficulty: item.metadata.difficulty,
+      types: item.metadata.types,
+      tags: item.metadata.tags,
+      files: item.files || []
     })), null, 2);
     
     const csv = [
-      ['Question', 'Answer', 'Topics', 'Creator', 'Date'],
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'],
       ...itemsToShow.map(item => [
         `"${(item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.options?.join(' | ') || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.date || '').replace(/"/g, '""')}"`
+        `"${(item.metadata.date || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.points?.toString() || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.timer?.toString() || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.round || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.set || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.source || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
 
@@ -773,7 +980,7 @@ export default function HomePage() {
       <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2>Structured Data Export</h2>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => copyToClipboard(json)}
               style={{
@@ -789,6 +996,20 @@ export default function HomePage() {
               📋 Copy JSON
             </button>
             <button
+              onClick={downloadAsJSON}
+              style={{
+                padding: '10px 20px',
+                background: '#0066cc',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              💾 Download JSON
+            </button>
+            <button
               onClick={() => copyToClipboard(csv)}
               style={{
                 padding: '10px 20px',
@@ -801,6 +1022,20 @@ export default function HomePage() {
               }}
             >
               📋 Copy CSV
+            </button>
+            <button
+              onClick={downloadAsCSV}
+              style={{
+                padding: '10px 20px',
+                background: '#0066cc',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              💾 Download CSV
             </button>
           </div>
         </div>

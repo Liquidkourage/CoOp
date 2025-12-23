@@ -466,33 +466,33 @@ export default function ImportPage() {
         }
       } else {
         // Handle CSV file
-        Papa.parse(selectedFile, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            if (results.data && results.data.length > 0) {
-              setPreview(results.data.slice(0, 5) as any[]);
-              const headers = Object.keys(results.data[0] as any);
-              
-              // Check if this looks like TrivNow format
-              const headerLower = headers.map(h => h.toLowerCase().trim());
+      Papa.parse(selectedFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.data && results.data.length > 0) {
+            setPreview(results.data.slice(0, 5) as any[]);
+            const headers = Object.keys(results.data[0] as any);
+            
+            // Check if this looks like TrivNow format
+            const headerLower = headers.map(h => h.toLowerCase().trim());
               const isTrivnow = trivnowConfig && trivnowConfig.detectionPatterns && 
                 trivnowConfig.detectionPatterns.some((pattern: string) => 
-                  headerLower.includes(pattern.toLowerCase().trim())
-                );
-              setIsTrivnowFormat(!!isTrivnow);
-              
-              // Start with TrivNow config mapping if available, otherwise empty
+                headerLower.includes(pattern.toLowerCase().trim())
+              );
+            setIsTrivnowFormat(!!isTrivnow);
+            
+            // Start with TrivNow config mapping if available, otherwise empty
               const mapping: Record<string, string> = isTrivnow && trivnowConfig.columnMapping 
                 ? { ...trivnowConfig.columnMapping }
-                : {};
+              : {};
+            
+            // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
+            headers.forEach(header => {
+              // Skip if already mapped (preserves TrivNow config mappings)
+              if (mapping[header]) return;
               
-              // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
-              headers.forEach(header => {
-                // Skip if already mapped (preserves TrivNow config mappings)
-                if (mapping[header]) return;
-                
-                const lower = header.toLowerCase().trim();
+              const lower = header.toLowerCase().trim();
                 // Check exact matches first
                 if (lower === 'question' || lower === 'questions') {
                   // Map Question column to description (will be used for title generation)
@@ -504,63 +504,63 @@ export default function ImportPage() {
                   // "Type" column is usually question type, not file format
                   mapping[header] = 'types';
                 } else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                  mapping[header] = 'title';
-                } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
-                  mapping[header] = 'creator';
-                } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
-                  mapping[header] = 'date';
+                mapping[header] = 'title';
+              } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
+                mapping[header] = 'creator';
+              } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
+                mapping[header] = 'date';
                 } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
                   // Don't auto-map "category" here - it's handled above
-                  mapping[header] = 'topics';
+                mapping[header] = 'topics';
                 // Format field removed - skip it
                 } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
-                  mapping[header] = 'questionCount';
-                } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
-                  mapping[header] = 'difficulty';
-                } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
-                  mapping[header] = 'description';
-                } else if (lower.includes('question') && lower.includes('type')) {
-                  mapping[header] = 'types';
-                } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
-                  mapping[header] = 'answer';
-                }
-              });
-              
-              setColumnMapping(mapping);
-            }
-          },
-          error: (error) => {
-            setResult({
-              success: false,
-              imported: 0,
-              errors: [error.message]
+                mapping[header] = 'questionCount';
+              } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
+                mapping[header] = 'difficulty';
+              } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
+                mapping[header] = 'description';
+              } else if (lower.includes('question') && lower.includes('type')) {
+                mapping[header] = 'types';
+              } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
+                mapping[header] = 'answer';
+              }
             });
+            
+            setColumnMapping(mapping);
           }
-        });
+        },
+        error: (error) => {
+          setResult({
+            success: false,
+            imported: 0,
+            errors: [error.message]
+          });
+        }
+      });
       }
     }
   };
 
   const processRows = async (rows: any[]) => {
-    const errors: string[] = [];
-    let imported = 0;
-    const debugInfo: any = {
-      totalRows: rows.length,
-      firstRow: rows[0],
-      columnMapping: columnMapping,
-      availableColumns: rows[0] ? Object.keys(rows[0]) : [],
+          const errors: string[] = [];
+          let imported = 0;
+          const debugInfo: any = {
+            totalRows: rows.length,
+            firstRow: rows[0],
+            columnMapping: columnMapping,
+            availableColumns: rows[0] ? Object.keys(rows[0]) : [],
       isTrivnowFormat: isTrivnowFormat,
       isExcelFormat: isExcelFormat,
       fileType: fileType
-    };
+          };
 
-    // Import each row as a separate content item (one row = one content item)
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      try {
-        const metadata: any = {};
-        
-        // First pass: collect all values for each mapped field
+          // Import each row as a separate content item (one row = one content item)
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            try {
+              const metadata: any = {};
+              
+              // First pass: collect all values for each mapped field
         const fieldValues: Record<string, any[]> = {};
         
         Object.keys(columnMapping).forEach(col => {
@@ -578,42 +578,57 @@ export default function ImportPage() {
               fieldValues[mappedField].push(value); // Keep original value for date detection
             }
           } else if (value !== undefined && value !== null && value.toString().trim()) {
-            if (!fieldValues[mappedField]) {
-              fieldValues[mappedField] = [];
-            }
-            fieldValues[mappedField].push(value.toString().trim());
-          }
-        });
-        
-        // Process collected values
-        Object.keys(fieldValues).forEach(mappedField => {
-          const values = fieldValues[mappedField];
-          
-          if (mappedField === 'topics') {
-            // Combine all topic values and split by comma
-            const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-            metadata.topics = [...new Set(allTopics)]; // Remove duplicates
-          } else if (mappedField === 'questionCount') {
-            // Use the first valid number
-            const num = parseInt(values[0]) || undefined;
-            if (num) metadata.questionCount = num;
-          } else if (mappedField === 'types') {
-            // Combine all type values and split by comma
-            const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-            metadata.types = [...new Set(allTypes)]; // Remove duplicates
+                  if (!fieldValues[mappedField]) {
+                    fieldValues[mappedField] = [];
+                  }
+                  fieldValues[mappedField].push(value.toString().trim());
+                }
+              });
+              
+              // Process collected values
+              Object.keys(fieldValues).forEach(mappedField => {
+                const values = fieldValues[mappedField];
+                
+                if (mappedField === 'topics') {
+                  // Combine all topic values and split by comma
+                  const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+                  metadata.topics = [...new Set(allTopics)]; // Remove duplicates
+                } else if (mappedField === 'questionCount') {
+                  // Use the first valid number
+                  const num = parseInt(values[0]) || undefined;
+                  if (num) metadata.questionCount = num;
+                } else if (mappedField === 'types') {
+                  // Combine all type values and split by comma
+                  const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
+                  metadata.types = [...new Set(allTypes)]; // Remove duplicates
           } else if (mappedField === 'description' || mappedField === 'question') {
             // Concatenate multiple question fields with line breaks
             const questionText = values.join('\n\n');
             metadata.question = questionText;
             metadata.description = questionText; // Backward compatibility
-          } else if (mappedField === 'creator') {
-            // Use first non-empty creator value
-            metadata.creator = values.find(v => v) || '';
-          } else if (mappedField === 'answer') {
-            // Store answer in both answer and correctAnswer fields
-            const answerValue = values[0];
-            metadata.answer = answerValue;
-            metadata.correctAnswer = answerValue;
+                } else if (mappedField === 'creator') {
+                  // Use first non-empty creator value
+                  metadata.creator = values.find(v => v) || '';
+                } else if (mappedField === 'answer') {
+                  // Store answer in both answer and correctAnswer fields
+                  const answerValue = values[0];
+                  metadata.answer = answerValue;
+                  metadata.correctAnswer = answerValue;
+          } else if (mappedField === 'points') {
+            // Parse as integer
+            const num = parseInt(values[0]) || undefined;
+            if (num !== undefined && !isNaN(num)) metadata.points = num;
+          } else if (mappedField === 'timer') {
+            // Parse as integer (seconds)
+            const num = parseInt(values[0]) || undefined;
+            if (num !== undefined && !isNaN(num)) metadata.timer = num;
+          } else if (mappedField === 'round' || mappedField === 'set' || mappedField === 'explanation' || mappedField === 'notes' || mappedField === 'source') {
+            // Use first value for these text fields
+            metadata[mappedField] = values[0] || undefined;
+          } else if (mappedField === 'alternateAnswers') {
+            // Split by comma and clean up
+            const allAnswers = values.join(',').split(',').map((a: string) => a.trim()).filter(Boolean);
+            metadata.alternateAnswers = [...new Set(allAnswers)]; // Remove duplicates
           } else if (mappedField === 'options') {
             // Handle options - can be from multiple columns (e.g., date columns mapped to options)
             // Collect all option values, handling dates and other formats
@@ -677,7 +692,7 @@ export default function ImportPage() {
             // Merge with existing options if any (from groupMultipleChoiceQuestions)
             if (row.options && Array.isArray(row.options) && row.options.length > 0) {
               metadata.options = [...new Set([...row.options, ...optionValues])];
-            } else {
+                } else {
               metadata.options = optionValues;
             }
           } else {
@@ -691,83 +706,46 @@ export default function ImportPage() {
           metadata.options = row.options;
         }
 
-        // Generate title from question if not mapped
-        if (!metadata.title) {
-          // Try to find a question column (case-insensitive)
-          const questionKey = Object.keys(row).find(key => 
-            key.toLowerCase() === 'question' || key.toLowerCase() === 'questions'
-          );
-          
-          if (questionKey && row[questionKey]) {
-            // Use first part of question as title
-            const questionText = row[questionKey].toString().trim();
-            if (questionText) {
-              metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
-            }
-          }
-          
-          // If still no title, try to use question if available
-          if (!metadata.title && (metadata.question || metadata.description)) {
-            const questionText = metadata.question || metadata.description || '';
-            metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
-          }
-          
-          // Title is optional - if still no title, use question text as fallback
-          if (!metadata.title) {
-            if (metadata.question || metadata.description) {
-              // Use question as title (truncated)
-              const questionText = metadata.question || metadata.description || '';
-              metadata.title = questionText.substring(0, 100) + (questionText.length > 100 ? '...' : '');
-            } else {
-              // Last resort: use first available text field
-              const firstTextValue = Object.values(row).find(v => v && v.toString().trim());
-              if (firstTextValue) {
-                metadata.title = firstTextValue.toString().trim().substring(0, 100);
-              } else {
-                metadata.title = 'Untitled Question';
-              }
-            }
-          }
-        }
+        // Title removed - not needed for individual questions (only for sets/rounds)
 
         // Use current user as creator if no creator is mapped
-        if (!metadata.creator) {
+              if (!metadata.creator) {
           if (currentUser) {
             // Use logged-in user as creator
             metadata.creator = currentUser;
           } else if (defaultCreator.trim()) {
-            metadata.creator = defaultCreator.trim();
+                  metadata.creator = defaultCreator.trim();
           } else if ((isTrivnowFormat || isExcelFormat) && row['source']) {
-            metadata.creator = row['source'].toString();
-          } else {
-            errors.push(`Row ${i + 1}: Missing creator (title: ${metadata.title}). Please select a user or set a default creator above.`);
-            continue;
+                  metadata.creator = row['source'].toString();
+                } else {
+            errors.push(`Row ${i + 1}: Missing creator. Please select a user or set a default creator above.`);
+                  continue;
+                }
+              }
+
+              if (!metadata.date) {
+                metadata.date = new Date().toISOString().split('T')[0];
+              }
+
+              const formData = new FormData();
+              formData.append('metadata', JSON.stringify(metadata));
+
+              const response = await fetch('/api/submit', {
+                method: 'POST',
+                body: formData,
+              });
+
+              const result = await response.json();
+
+              if (!response.ok) {
+                errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
+              } else {
+                imported++;
+              }
+            } catch (error) {
+              errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
           }
-        }
-
-        if (!metadata.date) {
-          metadata.date = new Date().toISOString().split('T')[0];
-        }
-
-        const formData = new FormData();
-        formData.append('metadata', JSON.stringify(metadata));
-
-        const response = await fetch('/api/submit', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
-        } else {
-          imported++;
-        }
-      } catch (error) {
-        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
 
     return { imported, errors, debugInfo };
   };
@@ -832,25 +810,25 @@ export default function ImportPage() {
           complete: async (results) => {
             const rows = results.data as any[];
             const { imported, errors, debugInfo } = await processRows(rows);
-            
-            setResult({
-              success: imported > 0,
-              imported,
-              errors,
-              message: `Imported ${imported} of ${rows.length} rows`,
-              debug: debugInfo
-            });
-            setImporting(false);
-          },
-          error: (error) => {
-            setResult({
-              success: false,
-              imported: 0,
-              errors: [error.message]
-            });
-            setImporting(false);
-          }
-        });
+
+          setResult({
+            success: imported > 0,
+            imported,
+            errors,
+            message: `Imported ${imported} of ${rows.length} rows`,
+            debug: debugInfo
+          });
+          setImporting(false);
+        },
+        error: (error) => {
+          setResult({
+            success: false,
+            imported: 0,
+            errors: [error.message]
+          });
+          setImporting(false);
+        }
+      });
       }
     } catch (error) {
       setResult({
@@ -1022,33 +1000,33 @@ export default function ImportPage() {
                   </div>
                 )}
                 {!currentUser && (
-                  <div style={{
+                <div style={{
                     background: '#fff3cd',
                     border: '1px solid #ffc107',
-                    padding: '15px',
-                    borderRadius: '4px',
-                    marginBottom: '15px'
-                  }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                  padding: '15px',
+                  borderRadius: '4px',
+                  marginBottom: '15px'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                       Default Creator (Required if no user selected and CSV doesn't have creator column)
-                    </label>
-                    <input
-                      type="text"
-                      value={defaultCreator}
-                      onChange={(e) => setDefaultCreator(e.target.value)}
-                      placeholder="Enter your name or creator name"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        fontSize: '16px'
-                      }}
-                    />
-                    <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#666' }}>
-                      This will be used as the creator for all imported items if no creator column is mapped.
-                    </p>
-                  </div>
+                  </label>
+                  <input
+                    type="text"
+                    value={defaultCreator}
+                    onChange={(e) => setDefaultCreator(e.target.value)}
+                    placeholder="Enter your name or creator name"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '16px'
+                    }}
+                  />
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#666' }}>
+                    This will be used as the creator for all imported items if no creator column is mapped.
+                  </p>
+                </div>
                 )}
                 {currentUser && (
                   <div style={{

@@ -68,6 +68,26 @@ export default function ConfigureTrivNowPage() {
                 autoMapping[header] = 'difficulty';
               } else if (lower.includes('description') || lower.includes('desc')) {
                 autoMapping[header] = 'question';
+              } else if (lower.includes('points') || lower.includes('point')) {
+                autoMapping[header] = 'points';
+              } else if (lower.includes('timer') || lower.includes('time') || lower.includes('timelimit')) {
+                autoMapping[header] = 'timer';
+              } else if (lower.includes('round')) {
+                autoMapping[header] = 'round';
+              } else if (lower.includes('set') || lower.includes('quiz') || lower.includes('event')) {
+                autoMapping[header] = 'set';
+              } else if (lower.includes('explanation') || lower.includes('explain')) {
+                autoMapping[header] = 'explanation';
+              } else if (lower.includes('note') && !lower.includes('question')) {
+                autoMapping[header] = 'notes';
+              } else if (lower.includes('alternate') || lower.includes('alternative') || lower.includes('variation')) {
+                autoMapping[header] = 'alternateAnswers';
+              } else if (lower.includes('option') || lower.includes('choice')) {
+                autoMapping[header] = 'options';
+              } else if (lower.includes('source') && !lower.includes('creator')) {
+                autoMapping[header] = 'source';
+              } else if (lower.includes('tag')) {
+                autoMapping[header] = 'tags';
               }
             });
             setMapping(autoMapping);
@@ -166,18 +186,30 @@ export default function ConfigureTrivNowPage() {
                     <div key={header} style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <label style={{ minWidth: '200px', fontWeight: '500' }}>{header}:</label>
                       <select value={mapping[header] || ''} onChange={(e) => setMapping({ ...mapping, [header]: e.target.value })} style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                        <option value="">-- Skip --</option>
-                        <option value="title">Title</option>
-                        <option value="creator">Creator</option>
+                        <option value="">-- Skip (ignore this column) --</option>
+                        <option value="question">Question (Required)</option>
+                        <option value="answer">Answer</option>
+                        <option value="creator">Creator (Required)</option>
                         <option value="date">Date</option>
                         <option value="topics">Topics</option>
-                        <option value="format">Format</option>
-                        <option value="questionCount">Question Count</option>
+                        <option value="types">Question Types</option>
                         <option value="difficulty">Difficulty</option>
-                        <option value="types">Types</option>
-                        <option value="question">Question</option>
-                        <option value="description">Description (deprecated)</option>
-                        <option value="answer">Answer / Correct Answer</option>
+                        <option value="points">Points</option>
+                        <option value="timer">Time Limit (seconds)</option>
+                        <option value="round">Round</option>
+                        <option value="set">Quiz Set/Event</option>
+                        <option value="explanation">Explanation</option>
+                        <option value="notes">Host Notes</option>
+                        <option value="alternateAnswers">Alternative Answers</option>
+                        <option value="tags">Tags</option>
+                        <option value="source">Source</option>
+                        <option value="language">Language</option>
+                        <option value="license">License</option>
+                        <option value="questionCount">Question Count</option>
+                        <option value="options">Options (for multiple-choice)</option>
+                        <option value="title">Title (deprecated - not needed for individual questions)</option>
+                        <option value="description">Description (deprecated - use 'question' instead)</option>
+                        <option value="format">Format (deprecated)</option>
                       </select>
                     </div>
                   ))}

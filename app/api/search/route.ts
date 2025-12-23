@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
           description: row.description || undefined, // Backward compatibility
           answer: row.answer || undefined,
           options: row.options || undefined,
+          points: row.points || undefined,
+          timer: row.timer || undefined,
+          round: row.round || undefined,
+          set: row.set || undefined,
+          explanation: row.explanation || undefined,
+          notes: row.notes || undefined,
+          alternateAnswers: row.alternate_answers || undefined,
           language: row.language || undefined,
           license: row.license || undefined,
           source: row.source || undefined,

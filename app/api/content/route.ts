@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
           id: `db-${row.id}`,
           path: row.file_paths?.[0]?.split('/').slice(0, -1).join('/') || '',
           metadata: {
-            title: row.title || undefined,
+            title: row.title || undefined, // Deprecated - kept for backward compatibility
             creator: row.creator || undefined,
             date: row.date || undefined,
             topics: row.topics || undefined,
@@ -79,6 +79,13 @@ export async function GET(request: NextRequest) {
             answer: row.answer || undefined,
             correctAnswer: row.answer || undefined,
             options: row.options || undefined,
+            points: row.points || undefined,
+            timer: row.timer || undefined,
+            round: row.round || undefined,
+            set: row.set || undefined,
+            explanation: row.explanation || undefined,
+            notes: row.notes || undefined,
+            alternateAnswers: row.alternate_answers || undefined,
             language: row.language || undefined,
             license: row.license || undefined,
             source: row.source || undefined,
