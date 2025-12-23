@@ -135,6 +135,8 @@ export async function insertContent(metadata: {
   round?: string;
   set?: string;
   explanation?: string;
+  notes?: string;
+  alternateAnswers?: string[];
   language?: string;
   license?: string;
   source?: string;

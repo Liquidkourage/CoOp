@@ -176,6 +176,7 @@ export default function HomePage() {
       ...itemsToShow.map(item => [
         `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
@@ -184,87 +185,9 @@ export default function HomePage() {
         `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.round || '').replace(/"/g, '""'))}"`,
         `"${((item.metadata.set || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`
-      ].join(','))
-    ].join('\n');
-    downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
-  };
-
-  const downloadAsExcel = async () => {
-    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
-    // For Excel, we'll use CSV format (can be opened in Excel)
-    // In a production app, you'd use a library like xlsx to create proper Excel files
-    const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join('\t'),
-      ...itemsToShow.map(item => [
-        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
-        (item.metadata.answer || '').replace(/\t/g, ' '),
-        (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
-        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
-        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
-        (item.metadata.creator || '').replace(/\t/g, ' '),
-        (item.metadata.date || '').replace(/\t/g, ' '),
-        (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
-        (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
-        (item.metadata.round || '').replace(/\t/g, ' '),
-        (item.metadata.set || '').replace(/\t/g, ' '),
-        (item.metadata.explanation || '').replace(/\t/g, ' '),
-        (item.metadata.notes || '').replace(/\t/g, ' '),
-        (item.metadata.source || '').replace(/\t/g, ' ')
-      ].join('\t'))
-    ].join('\n');
-    downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
-  };
-
-  const downloadAsJSON = () => {
-    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
-    const json = JSON.stringify(itemsToShow.map(item => ({
-      question: item.metadata.question || item.metadata.description,
-      answer: item.metadata.answer,
-      options: item.metadata.options,
-      topics: item.metadata.topics,
-      creator: item.metadata.creator,
-      date: item.metadata.date,
-      points: item.metadata.points,
-      timer: item.metadata.timer,
-      round: item.metadata.round,
-      set: item.metadata.set,
-      explanation: item.metadata.explanation,
-      difficulty: item.metadata.difficulty,
-      types: item.metadata.types,
-      tags: item.metadata.tags
-    })), null, 2);
-    downloadFile(json, `trivia-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
-  };
-
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadAsCSV = () => {
-    const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
-    const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join(','),
-      ...itemsToShow.map(item => [
-        `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.round || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.set || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`
+        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.notes || '').replace(/"/g, '""'))}"`,
+        `"${((item.metadata.source || '').replace(/"/g, '""'))}"`
       ].join(','))
     ].join('\n');
     downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
@@ -300,6 +223,7 @@ export default function HomePage() {
     const json = JSON.stringify(itemsToShow.map(item => ({
       question: item.metadata.question || item.metadata.description,
       answer: item.metadata.answer,
+      alternateAnswers: item.metadata.alternateAnswers,
       options: item.metadata.options,
       topics: item.metadata.topics,
       creator: item.metadata.creator,
@@ -309,9 +233,12 @@ export default function HomePage() {
       round: item.metadata.round,
       set: item.metadata.set,
       explanation: item.metadata.explanation,
+      notes: item.metadata.notes,
+      source: item.metadata.source,
       difficulty: item.metadata.difficulty,
       types: item.metadata.types,
-      tags: item.metadata.tags
+      tags: item.metadata.tags,
+      files: item.files || []
     })), null, 2);
     downloadFile(json, `trivia-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
   };
