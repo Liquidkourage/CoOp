@@ -120,9 +120,19 @@ export default function HomePage() {
       fetch('/api/topics').then(r => r.json()),
       fetch('/api/creators').then(r => r.json())
     ]).then(([topicsData, creatorsData]) => {
-      if (topicsData.success) setAllTopics(topicsData.topics || []);
-      if (creatorsData.success) setAllCreators(creatorsData.creators || []);
-    }).catch(() => {});
+      if (topicsData.success) {
+        setAllTopics(topicsData.topics || []);
+      } else {
+        console.error('Failed to load topics:', topicsData.error);
+      }
+      if (creatorsData.success) {
+        setAllCreators(creatorsData.creators || []);
+      } else {
+        console.error('Failed to load creators:', creatorsData.error);
+      }
+    }).catch((error) => {
+      console.error('Error fetching topics/creators:', error);
+    });
   }, []);
 
   const handleSearch = () => {
@@ -1296,44 +1306,62 @@ export default function HomePage() {
               marginBottom: '25px'
             }}>
               <h2 style={{ marginBottom: '20px' }}>Browse by Topic</h2>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '15px'
-              }}>
-                {allTopics.map(topic => (
-                  <button
-                    key={topic}
-                    onClick={() => {
-                      setSelectedTopic(topic);
-                      setViewMode('search');
-                      setSearchQuery('');
-                      setTimeout(() => handleSearch(), 100);
-                    }}
-                    style={{
-                      padding: '15px',
-                      background: '#f5f5f5',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                      fontSize: '0.95rem',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e3f2fd';
-                      e.currentTarget.style.borderColor = '#0066cc';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f5f5f5';
-                      e.currentTarget.style.borderColor = '#e0e0e0';
-                    }}
-                  >
-                    {topic}
-                  </button>
-                ))}
-              </div>
+              {allTopics.length === 0 ? (
+                <div style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#666',
+                  background: '#f9f9f9',
+                  borderRadius: '8px',
+                  border: '2px dashed #ddd'
+                }}>
+                  <p style={{ fontSize: '18px', marginBottom: '10px' }}>No topics found</p>
+                  <p style={{ fontSize: '14px' }}>
+                    Topics will appear here once content with topics is added to the repository.
+                    <br />
+                    Add topics when submitting content or importing files.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '15px'
+                }}>
+                  {allTopics.map(topic => (
+                    <button
+                      key={topic}
+                      onClick={() => {
+                        setSelectedTopic(topic);
+                        setViewMode('search');
+                        setSearchQuery('');
+                        setTimeout(() => handleSearch(), 100);
+                      }}
+                      style={{
+                        padding: '15px',
+                        background: '#f5f5f5',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                        fontSize: '0.95rem',
+                        fontWeight: '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#e3f2fd';
+                        e.currentTarget.style.borderColor = '#0066cc';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f5f5f5';
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                      }}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

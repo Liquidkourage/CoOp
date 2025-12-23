@@ -260,10 +260,16 @@ export async function getAllTopics() {
     const result = await client.query(`
       SELECT DISTINCT unnest(topics) AS topic
       FROM content_items
-      WHERE topics IS NOT NULL AND array_length(topics, 1) > 0
+      WHERE topics IS NOT NULL 
+        AND array_length(topics, 1) > 0
+        AND unnest(topics) IS NOT NULL
+        AND trim(unnest(topics)) != ''
       ORDER BY topic
     `);
-    return result.rows.map(row => row.topic) as string[];
+    const topics = result.rows.map(row => row.topic).filter((topic): topic is string => 
+      topic !== null && topic !== undefined && topic.trim() !== ''
+    );
+    return topics;
   } finally {
     client.release();
   }
