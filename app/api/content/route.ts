@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         const query = search.toLowerCase();
         fileContent = fileContent.filter(item => {
           const { metadata } = item;
-          if (metadata.title?.toLowerCase().includes(query)) return true;
+          // Title removed - individual questions never need titles
           if (metadata.question?.toLowerCase().includes(query)) return true;
           if (metadata.description?.toLowerCase().includes(query)) return true; // Backward compatibility
           if (metadata.creator?.toLowerCase().includes(query)) return true;

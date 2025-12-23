@@ -202,8 +202,8 @@ export default function ConfigureImportPage() {
         mapping[header] = 'types';
       } else if (lower === 'difficulty' || lower === 'level') {
         mapping[header] = 'difficulty';
-      } else if (lower === 'title' || lower === 'name') {
-        mapping[header] = 'title';
+      } else if (lower === 'name' && !lower.includes('user') && !lower.includes('creator')) {
+        // Skip - name without context is ambiguous
       } else if (lower.includes('tag')) {
         mapping[header] = 'tags';
       } else if (lower.includes('source')) {
@@ -315,10 +315,7 @@ export default function ConfigureImportPage() {
         }
       });
       
-      // Generate title if not mapped
-      if (!mapped.title && mapped.question) {
-        mapped.title = mapped.question.substring(0, 100) + (mapped.question.length > 100 ? '...' : '');
-      }
+      // Title removed - individual questions never need titles
       
       // Validation: question is required, creator will be auto-filled from logged-in user
       const hasQuestion = !!(mapped.question || mapped.description);

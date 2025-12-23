@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Save to database
     const dbRecord = await insertContent({
-      title: metadata.title, // Optional - deprecated for individual questions
+      // Title removed - individual questions never need titles
       creator: metadata.creator,
       date: metadata.date,
       topics: metadata.topics,

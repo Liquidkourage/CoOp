@@ -264,7 +264,7 @@ export default function HomePage() {
   const renderQAPairs = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
-      const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
+      const q = item.metadata.question || item.metadata.description || 'No question';
       const optionsText = item.metadata.options && item.metadata.options.length > 0 
         ? '\nOptions:\n' + formatOptions(item.metadata.options) 
         : '';
@@ -336,7 +336,7 @@ export default function HomePage() {
   const renderQuizFormat = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const text = itemsToShow.map((item, idx) => {
-      const q = item.metadata.question || item.metadata.description || item.metadata.title || 'No question';
+      const q = item.metadata.question || item.metadata.description || 'No question';
       const optionsText = item.metadata.options && item.metadata.options.length > 0 
         ? '\n   ' + formatOptions(item.metadata.options).replace(/\n/g, '\n   ')
         : '';
@@ -403,7 +403,7 @@ export default function HomePage() {
     const csv = [
       ['Question', 'Options', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
       ...itemsToShow.map(item => [
-        (item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/\t/g, ' '),
+        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
         (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
         (item.metadata.answer || '').replace(/\t/g, ' '),
         (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
@@ -469,7 +469,7 @@ export default function HomePage() {
             <tbody>
               {itemsToShow.map((item, idx) => (
                 <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8f9fa' }}>
-                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.question || item.metadata.description || item.metadata.title || '-'}</td>
+                  <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.question || item.metadata.description || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6', color: '#28a745', fontWeight: '500' }}>{item.metadata.answer || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.topics?.join(', ') || '-'}</td>
                   <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.creator || '-'}</td>
@@ -863,7 +863,7 @@ export default function HomePage() {
   const renderStructured = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const json = JSON.stringify(itemsToShow.map(item => ({
-      question: item.metadata.question || item.metadata.description || item.metadata.title || 'No question',
+      question: item.metadata.question || item.metadata.description || 'No question',
       answer: item.metadata.answer || 'No answer',
       alternateAnswers: item.metadata.alternateAnswers || [],
       options: item.metadata.options || [],
@@ -886,7 +886,7 @@ export default function HomePage() {
     const csv = [
       ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'],
       ...itemsToShow.map(item => [
-        `"${(item.metadata.question || item.metadata.description || item.metadata.title || '').replace(/"/g, '""')}"`,
+        `"${(item.metadata.question || item.metadata.description || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.options?.join(' | ') || '').replace(/"/g, '""')}"`,
@@ -1432,7 +1432,7 @@ export default function HomePage() {
               <div className="content-grid">
                 {content.map(item => (
                   <div key={item.id} className="content-card">
-                    <h3>{item.metadata.title || 'Untitled'}</h3>
+                    <h3>{item.metadata.question || item.metadata.description || 'No question'}</h3>
                     <div className="meta-bar">
                       {item.metadata.creator && (
                         <div className="meta-item">

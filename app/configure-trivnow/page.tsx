@@ -52,8 +52,8 @@ export default function ConfigureTrivNowPage() {
                 autoMapping[header] = 'answer';
               }
               // General mappings (fallback)
-              else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                autoMapping[header] = 'title';
+              else if (lower === 'quiz' || lower === 'set') {
+                autoMapping[header] = 'set';
               } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('created_by')) {
                 autoMapping[header] = 'creator';
               } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
@@ -207,7 +207,6 @@ export default function ConfigureTrivNowPage() {
                         <option value="license">License</option>
                         <option value="questionCount">Question Count</option>
                         <option value="options">Options (for multiple-choice)</option>
-                        <option value="title">Title (deprecated - not needed for individual questions)</option>
                         <option value="description">Description (deprecated - use 'question' instead)</option>
                         <option value="format">Format (deprecated)</option>
                       </select>

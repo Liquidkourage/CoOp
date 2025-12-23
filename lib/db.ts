@@ -119,7 +119,7 @@ export interface ContentRow {
 }
 
 export async function insertContent(metadata: {
-  title?: string;
+  // title removed - individual questions NEVER need titles
   creator?: string;
   date?: string;
   topics?: string[];
@@ -154,7 +154,7 @@ export async function insertContent(metadata: {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *
     `, [
-      metadata.title || null,
+      null, // title - NEVER used for individual questions, kept for backward compatibility only
       metadata.creator || null,
       metadata.date || null,
       metadata.topics || [],

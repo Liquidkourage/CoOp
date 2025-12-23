@@ -432,8 +432,8 @@ export default function ImportPage() {
                 } else if (lower === 'type') {
                   // "Type" column is usually question type, not file format
                   mapping[header] = 'types';
-                } else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                  mapping[header] = 'title';
+                } else if (lower === 'quiz' || lower === 'set') {
+                  mapping[header] = 'set';
                 } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
                   mapping[header] = 'creator';
                 } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
@@ -503,8 +503,8 @@ export default function ImportPage() {
                 } else if (lower === 'type') {
                   // "Type" column is usually question type, not file format
                   mapping[header] = 'types';
-                } else if (lower.includes('title') || lower.includes('name') || lower === 'quiz' || lower === 'set') {
-                mapping[header] = 'title';
+                } else if (lower === 'quiz' || lower === 'set') {
+                mapping[header] = 'set';
               } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
                 mapping[header] = 'creator';
               } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
@@ -884,9 +884,9 @@ export default function ImportPage() {
               fontSize: '14px',
               marginBottom: '20px'
             }}>
-              <div><strong>Required:</strong> title (or will be auto-generated from question text)</div>
+              <div><strong>Required:</strong> question and creator</div>
               <div><strong>Creator:</strong> Either map a "creator" column OR set a default creator below</div>
-              <div><strong>Optional:</strong> date, topics (comma-separated), questionCount, difficulty, types, description</div>
+              <div><strong>Optional:</strong> date, topics (comma-separated), questionCount, difficulty, types, answer, points, timer, round, set, explanation, notes, source</div>
             </div>
             <div style={{
               background: '#e3f2fd',
@@ -896,9 +896,9 @@ export default function ImportPage() {
             }}>
               <strong>Example CSV:</strong>
               <pre style={{ marginTop: '10px', fontSize: '12px', overflow: 'auto' }}>
-{`title,creator,date,topics,format,questionCount,difficulty
-"Science Quiz","John Doe","2024-01-15","science,physics","csv",25,"medium"
-"History Trivia","Jane Smith","2024-01-16","history,world-war-ii","xlsx",50,"hard"`}
+{`question,creator,date,topics,questionCount,difficulty,answer
+"What is the capital of France?","John Doe","2024-01-15","geography",1,"easy","Paris"
+"What year did World War II end?","Jane Smith","2024-01-16","history",1,"medium","1945"`}
               </pre>
             </div>
           </div>
@@ -1045,7 +1045,7 @@ export default function ImportPage() {
                   Map your {fileType === 'excel' ? 'Excel' : 'CSV'} columns to our metadata fields. Auto-detected mappings are shown below.
                   {!(isTrivnowFormat || isExcelFormat) && (
                     <strong style={{ color: '#c62828', display: 'block', marginTop: '5px' }}>
-                      Make sure "Title" column is mapped, or set a default creator above!
+                      Make sure "Question" and "Creator" columns are mapped!
                     </strong>
                   )}
                 </p>
@@ -1066,11 +1066,11 @@ export default function ImportPage() {
                           padding: '8px',
                           border: '1px solid #ddd',
                           borderRadius: '4px',
-                          background: columnMapping[csvCol] === 'title' || columnMapping[csvCol] === 'creator' ? '#fff3cd' : '#fff'
+                          background: columnMapping[csvCol] === 'question' || columnMapping[csvCol] === 'creator' ? '#fff3cd' : '#fff'
                         }}
                       >
                         <option value="">-- Skip --</option>
-                        <option value="title">Title *</option>
+                        <option value="question">Question *</option>
                         <option value="creator">Creator *</option>
                         <option value="date">Date</option>
                         <option value="topics">Topics (comma-separated)</option>
