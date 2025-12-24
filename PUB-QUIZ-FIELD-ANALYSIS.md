@@ -230,15 +230,16 @@ This document provides a deep analysis of all possible data fields for a pub qui
 - **Default**: "en"
 - **Notes**: Most content likely English, but useful for international hosts
 
-#### 13. **Source/Attribution** (`source`)
-- **Why Useful**: Credits original source of information
+#### 13. **Source/Verification URL** (`source`)
+- **Why Useful**: Provides a reliable web resource that verifies question accuracy
 - **Use Cases**:
-  - Attribution
-  - Fact-checking
-  - Reference tracking
-- **Format**: String
-- **Example**: "Wikipedia", "BBC News", "Original Research"
-- **Notes**: Important for credibility and fact-checking
+  - Fact-checking and verification
+  - Attribution to authoritative sources
+  - Reference for hosts to verify answers
+  - Credibility and trustworthiness
+- **Format**: String (URL/web resource)
+- **Example**: "https://en.wikipedia.org/wiki/Sinn_Féin", "https://www.bbc.com/news/...", "https://www.britannica.com/..."
+- **Notes**: Should be a reliable, accessible web resource that verifies the question's accuracy. Important for credibility and fact-checking.
 
 #### 14. **Tags** (`tags`)
 - **Why Useful**: Flexible categorization beyond topics

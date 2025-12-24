@@ -470,7 +470,7 @@ export default function SubmitPage() {
                 Source
               </label>
               <input
-                type="text"
+                type="url"
                 value={formData.source}
                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                 style={{
@@ -480,10 +480,10 @@ export default function SubmitPage() {
                   borderRadius: '4px',
                   fontSize: '16px'
                 }}
-                placeholder="e.g., Wikipedia, BBC News, Original Research"
+                placeholder="https://example.com/verification-url"
               />
               <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                Original source of the information (for attribution and fact-checking)
+                URL to a reliable web resource that verifies the question's accuracy (for fact-checking and credibility)
               </p>
             </div>
 
