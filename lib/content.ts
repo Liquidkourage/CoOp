@@ -23,7 +23,7 @@ export interface ContentMetadata {
   alternateAnswers?: string[]; // Alternative acceptable answers (e.g., ["Ireland", "Republic of Ireland", "Eire"])
   language?: string;
   license?: string;
-  source?: string; // Original source of information
+  source?: string; // URL/web resource that verifies question accuracy
   tags?: string[];
   files?: string[]; // Media files (images, audio, video)
   relatedContent?: string[];

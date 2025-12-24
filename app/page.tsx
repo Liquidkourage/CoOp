@@ -26,7 +26,7 @@ interface ContentItem {
     set?: string;
     explanation?: string;
     notes?: string; // Host notes
-    source?: string; // Original source of information
+    source?: string; // URL/web resource that verifies question accuracy
     tags?: string[];
     files?: string[]; // Media files
   };
