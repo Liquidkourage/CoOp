@@ -12,12 +12,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but only on mount, not during login)
   useEffect(() => {
-    if (currentUser) {
+    // Only redirect if user was already logged in when page loaded
+    // Don't redirect if we're in the middle of logging in
+    if (currentUser && !loading && username === '') {
       router.push('/');
     }
-  }, [currentUser, router]);
+  }, []); // Only run on mount
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,14 +36,25 @@ export default function LoginPage() {
     try {
       const trimmedUsername = username.trim();
       console.log('Logging in user:', trimmedUsername);
+      
+      // Set user in localStorage first
+      localStorage.setItem('current-user', trimmedUsername);
+      
+      // Update available users list
+      const existingUsers = JSON.parse(localStorage.getItem('available-users') || '[]');
+      if (!existingUsers.includes(trimmedUsername)) {
+        existingUsers.push(trimmedUsername);
+        localStorage.setItem('available-users', JSON.stringify(existingUsers));
+      }
+      
+      // Update context
       addUser(trimmedUsername);
       
-      // Small delay to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Clear the form
+      setUsername('');
       
-      // Navigate to home page
-      console.log('Navigating to home...');
-      window.location.href = '/'; // Use window.location as fallback
+      // Navigate immediately - don't wait
+      window.location.href = '/';
     } catch (err) {
       console.error('Login error:', err);
       setError('Failed to login. Please try again.');
@@ -53,13 +66,15 @@ export default function LoginPage() {
     try {
       setLoading(true);
       console.log('Selecting user:', user);
+      
+      // Set user in localStorage first
+      localStorage.setItem('current-user', user);
+      
+      // Update context
       setCurrentUser(user);
       
-      // Small delay to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      console.log('Navigating to home...');
-      window.location.href = '/'; // Use window.location as fallback
+      // Navigate immediately
+      window.location.href = '/';
     } catch (err) {
       console.error('Select user error:', err);
       setError('Failed to select user. Please try again.');
