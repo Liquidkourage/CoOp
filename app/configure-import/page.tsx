@@ -51,7 +51,7 @@ const TARGET_FIELDS = [
   { value: 'source', label: 'Source', required: false },
   { value: 'language', label: 'Language', required: false },
   { value: 'questionCount', label: 'Question Count', required: false },
-  { value: 'options', label: 'Options (for multiple-choice)', required: false },
+  { value: 'options', label: 'Incorrect Options (Distractors) - semicolon-delimited', required: false },
   { value: 'skip', label: 'Skip (ignore this column)', required: false },
 ];
 

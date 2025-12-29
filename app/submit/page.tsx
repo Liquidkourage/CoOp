@@ -28,6 +28,7 @@ export default function SubmitPage() {
     types: [] as string[],
     question: '',
     answer: '',
+    options: '', // Incorrect options (distractors) - semicolon-delimited
     alternateAnswers: '',
     points: '',
     timer: '',
@@ -120,6 +121,7 @@ export default function SubmitPage() {
         question: formData.question.trim(), // Required
         description: formData.question.trim(), // Backward compatibility (database column)
         answer: formData.answer.trim() || undefined,
+        options: formData.options.split(';').map(o => o.trim()).filter(Boolean), // Parse semicolon-delimited incorrect options
         alternateAnswers: formData.alternateAnswers.split(',').map(a => a.trim()).filter(Boolean),
         points: formData.points ? parseInt(formData.points) : undefined,
         timer: formData.timer ? parseInt(formData.timer) : undefined,

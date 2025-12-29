@@ -1655,7 +1655,7 @@ export default function HomePage() {
                         border: '1px solid #e0e0e0'
                       }}>
                         <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '0.9rem', color: '#666' }}>
-                          Options:
+                          Incorrect Options (Distractors):
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {item.metadata.options.map((opt, optIdx) => (

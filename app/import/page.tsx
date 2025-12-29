@@ -630,9 +630,11 @@ export default function ImportPage() {
             const allAnswers = values.join(',').split(',').map((a: string) => a.trim()).filter(Boolean);
             metadata.alternateAnswers = [...new Set(allAnswers)]; // Remove duplicates
           } else if (mappedField === 'options') {
-            // Handle options - can be from multiple columns (e.g., date columns mapped to options)
+            // Handle incorrect options (distractors) - semicolon-delimited
             // Collect all option values, handling dates and other formats
             const optionValues: string[] = [];
+            const correctAnswer = metadata.answer || metadata.correctAnswer || '';
+            
             values.forEach((val: any) => {
               // Convert value to string, handling dates
               let optionStr = '';
@@ -676,23 +678,39 @@ export default function ImportPage() {
                 optionStr = String(val || '').trim();
               }
               
-              // Split by comma if multiple options in one cell
-              if (optionStr.includes(',')) {
-                optionStr.split(',').forEach(opt => {
-                  const trimmed = opt.trim();
-                  if (trimmed && !optionValues.includes(trimmed)) {
-                    optionValues.push(trimmed);
+              // Split by semicolon first (primary delimiter), then by comma (fallback)
+              const delimiters = [';', ','];
+              let splitOptions: string[] = [optionStr];
+              
+              for (const delimiter of delimiters) {
+                const newSplit: string[] = [];
+                splitOptions.forEach(opt => {
+                  if (opt.includes(delimiter)) {
+                    newSplit.push(...opt.split(delimiter).map(o => o.trim()).filter(Boolean));
+                  } else {
+                    newSplit.push(opt.trim());
                   }
                 });
-              } else if (optionStr && !optionValues.includes(optionStr)) {
-                optionValues.push(optionStr);
+                splitOptions = newSplit;
               }
+              
+              splitOptions.forEach(opt => {
+                const trimmed = opt.trim();
+                // Only add if it's not empty and not the correct answer
+                if (trimmed && trimmed.toLowerCase() !== correctAnswer.toLowerCase() && !optionValues.includes(trimmed)) {
+                  optionValues.push(trimmed);
+                }
+              });
             });
             
             // Merge with existing options if any (from groupMultipleChoiceQuestions)
+            // Filter out correct answer from existing options
             if (row.options && Array.isArray(row.options) && row.options.length > 0) {
-              metadata.options = [...new Set([...row.options, ...optionValues])];
-                } else {
+              const filteredExisting = row.options.filter((opt: string) => 
+                opt.toLowerCase() !== correctAnswer.toLowerCase()
+              );
+              metadata.options = [...new Set([...filteredExisting, ...optionValues])];
+            } else {
               metadata.options = optionValues;
             }
           } else {
