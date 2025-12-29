@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Navigation from './components/Navigation';
+import { useUser } from './contexts/UserContext';
 
 interface ContentItem {
   id: string;
@@ -51,6 +52,7 @@ type ViewMode = 'search' | 'browse' | 'stats' | 'topics' | 'creators' |
                 'flashcards' | 'bulk-copy' | 'document' | 'structured';
 
 export default function HomePage() {
+  const { currentUser, setCurrentUser } = useUser();
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1047,8 +1049,123 @@ export default function HomePage() {
     <div>
       <header className="header">
         <div className="container">
-          <h1>Trivia Content Repository</h1>
-          <p>A collaborative repository for trivia content creators</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
+            <div>
+              <h1>Trivia Content Repository</h1>
+              <p>A collaborative repository for trivia content creators</p>
+            </div>
+            {currentUser ? (
+              <div style={{
+                padding: '12px 20px',
+                background: '#e8f5e9',
+                border: '2px solid #4caf50',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#2e7d32', fontWeight: '600', marginBottom: '4px' }}>
+                    Logged in as:
+                  </div>
+                  <div style={{ fontSize: '18px', color: '#1b5e20', fontWeight: '700' }}>
+                    {currentUser}
+                  </div>
+                </div>
+                <Link
+                  href="/login"
+                  style={{
+                    padding: '8px 16px',
+                    background: '#fff',
+                    color: '#2e7d32',
+                    border: '1px solid #4caf50',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#c8e6c9';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff';
+                  }}
+                >
+                  Switch User
+                </Link>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('current-user');
+                    }
+                    setCurrentUser(null);
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#fff',
+                    color: '#c62828',
+                    border: '1px solid #ef5350',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#ffcdd2';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff';
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                padding: '12px 20px',
+                background: '#fff3e0',
+                border: '2px solid #ff9800',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#e65100', fontWeight: '600', marginBottom: '4px' }}>
+                    Not logged in
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#bf360c' }}>
+                    Login to track your submissions
+                  </div>
+                </div>
+                <Link
+                  href="/login"
+                  style={{
+                    padding: '8px 16px',
+                    background: '#ff9800',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f57c00';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#ff9800';
+                  }}
+                >
+                  Login →
+                </Link>
+              </div>
+            )}
+          </div>
           <Navigation />
         </div>
       </header>
