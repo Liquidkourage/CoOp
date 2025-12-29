@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '../components/Navigation';
+
+interface Round {
+  id: number;
+  name: string;
+}
+
+interface Set {
+  id: number;
+  name: string;
+}
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -29,6 +39,29 @@ export default function SubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [rounds, setRounds] = useState<Round[]>([]);
+  const [sets, setSets] = useState<Set[]>([]);
+  const [loadingRoundsSets, setLoadingRoundsSets] = useState(true);
+  const [showNewRound, setShowNewRound] = useState(false);
+  const [showNewSet, setShowNewSet] = useState(false);
+  const [newRoundName, setNewRoundName] = useState('');
+  const [newSetName, setNewSetName] = useState('');
+
+  useEffect(() => {
+    // Load rounds and sets for dropdowns
+    Promise.all([
+      fetch('/api/rounds').then(r => r.json()),
+      fetch('/api/sets').then(r => r.json())
+    ]).then(([roundsData, setsData]) => {
+      if (roundsData.success) {
+        setRounds(roundsData.rounds || []);
+      }
+      if (setsData.success) {
+        setSets(setsData.sets || []);
+      }
+      setLoadingRoundsSets(false);
+    }).catch(() => setLoadingRoundsSets(false));
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -369,37 +402,119 @@ export default function SubmitPage() {
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
                   Round
                 </label>
-                <input
-                  type="text"
-                  value={formData.round}
-                  onChange={(e) => setFormData({ ...formData, round: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="e.g., Round 1: History"
-                />
+                <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
+                  <select
+                    value={formData.round}
+                    onChange={(e) => {
+                      setFormData({ ...formData, round: e.target.value });
+                      if (e.target.value) setShowNewRound(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '16px',
+                      background: '#fff'
+                    }}
+                  >
+                    <option value="">Select existing round...</option>
+                    {rounds.map(round => (
+                      <option key={round.id} value={round.name}>{round.name}</option>
+                    ))}
+                  </select>
+                  {showNewRound && (
+                    <input
+                      type="text"
+                      value={formData.round}
+                      onChange={(e) => setFormData({ ...formData, round: e.target.value })}
+                      placeholder="Or type new round name"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '16px'
+                      }}
+                    />
+                  )}
+                  {!showNewRound && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewRound(true)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#f0f0f0',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      + Create New Round
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
                   Quiz Set/Event
                 </label>
-                <input
-                  type="text"
-                  value={formData.set}
-                  onChange={(e) => setFormData({ ...formData, set: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="e.g., December 2025 Quiz Night"
-                />
+                <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
+                  <select
+                    value={formData.set}
+                    onChange={(e) => {
+                      setFormData({ ...formData, set: e.target.value });
+                      if (e.target.value) setShowNewSet(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '16px',
+                      background: '#fff'
+                    }}
+                  >
+                    <option value="">Select existing set...</option>
+                    {sets.map(set => (
+                      <option key={set.id} value={set.name}>{set.name}</option>
+                    ))}
+                  </select>
+                  {showNewSet && (
+                    <input
+                      type="text"
+                      value={formData.set}
+                      onChange={(e) => setFormData({ ...formData, set: e.target.value })}
+                      placeholder="Or type new set name"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '16px'
+                      }}
+                    />
+                  )}
+                  {!showNewSet && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSet(true)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#f0f0f0',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      + Create New Set
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

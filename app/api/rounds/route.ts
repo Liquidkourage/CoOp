@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getAllRounds, insertRound } from '@/lib/db';
+import { initDatabase, getAllRounds, insertRound, getQuestionCountForRound } from '@/lib/db';
 
 export async function GET() {
   try {
     await initDatabase();
     const rounds = await getAllRounds();
     
+    // Add question counts to each round
+    const roundsWithCounts = await Promise.all(
+      rounds.map(async (round) => {
+        const questionCount = await getQuestionCountForRound(round.id);
+        return {
+          ...round,
+          questionCount
+        };
+      })
+    );
+    
     return NextResponse.json({
       success: true,
-      count: rounds.length,
-      rounds
+      count: roundsWithCounts.length,
+      rounds: roundsWithCounts
     });
   } catch (error) {
     console.error('Error loading rounds:', error);

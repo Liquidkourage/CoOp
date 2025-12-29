@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getAllSets, insertSet } from '@/lib/db';
+import { initDatabase, getAllSets, insertSet, getQuestionCountForSet, getRoundCountForSet } from '@/lib/db';
 
 export async function GET() {
   try {
     await initDatabase();
     const sets = await getAllSets();
     
+    // Add question and round counts to each set
+    const setsWithCounts = await Promise.all(
+      sets.map(async (set) => {
+        const questionCount = await getQuestionCountForSet(set.id);
+        const roundCount = await getRoundCountForSet(set.id);
+        return {
+          ...set,
+          questionCount,
+          roundCount
+        };
+      })
+    );
+    
     return NextResponse.json({
       success: true,
-      count: sets.length,
-      sets
+      count: setsWithCounts.length,
+      sets: setsWithCounts
     });
   } catch (error) {
     console.error('Error loading sets:', error);

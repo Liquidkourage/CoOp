@@ -601,6 +601,30 @@ export async function addQuestionToSet(questionId: number, setId: number, sequen
   }
 }
 
+export async function removeQuestionFromRound(questionId: number, roundId: number) {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      DELETE FROM question_rounds
+      WHERE question_id = $1 AND round_id = $2
+    `, [questionId, roundId]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function removeQuestionFromSet(questionId: number, setId: number) {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      DELETE FROM question_sets
+      WHERE question_id = $1 AND set_id = $2
+    `, [questionId, setId]);
+  } finally {
+    client.release();
+  }
+}
+
 export async function addRoundToSet(roundId: number, setId: number, sequence: number = 0) {
   const client = await pool.connect();
   try {
@@ -705,6 +729,184 @@ export async function getSetsForRound(roundId: number) {
       ORDER BY rs.sequence, s.created_at
     `, [roundId]);
     return result.rows as (SetRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+// Update and delete functions for rounds and sets
+export async function updateRound(id: number, metadata: {
+  name?: string;
+  creator?: string;
+  date?: string;
+  description?: string;
+  topics?: string[];
+}) {
+  const client = await pool.connect();
+  try {
+    const updates: string[] = [];
+    const params: any[] = [];
+    let paramCount = 1;
+
+    if (metadata.name !== undefined) {
+      updates.push(`name = $${paramCount++}`);
+      params.push(metadata.name);
+    }
+    if (metadata.creator !== undefined) {
+      updates.push(`creator = $${paramCount++}`);
+      params.push(metadata.creator);
+    }
+    if (metadata.date !== undefined) {
+      updates.push(`date = $${paramCount++}`);
+      params.push(metadata.date);
+    }
+    if (metadata.description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      params.push(metadata.description);
+    }
+    if (metadata.topics !== undefined) {
+      updates.push(`topics = $${paramCount++}`);
+      params.push(metadata.topics);
+    }
+
+    if (updates.length === 0) {
+      return await getRoundById(id);
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    params.push(id);
+
+    const result = await client.query(`
+      UPDATE rounds
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `, params);
+    return result.rows[0] as RoundRow | undefined;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteRound(id: number) {
+  const client = await pool.connect();
+  try {
+    // Cascade delete will handle junction tables automatically
+    await client.query('DELETE FROM rounds WHERE id = $1', [id]);
+    return true;
+  } catch (error) {
+    console.error('Error deleting round:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateSet(id: number, metadata: {
+  name?: string;
+  creator?: string;
+  date?: string;
+  description?: string;
+  topics?: string[];
+}) {
+  const client = await pool.connect();
+  try {
+    const updates: string[] = [];
+    const params: any[] = [];
+    let paramCount = 1;
+
+    if (metadata.name !== undefined) {
+      updates.push(`name = $${paramCount++}`);
+      params.push(metadata.name);
+    }
+    if (metadata.creator !== undefined) {
+      updates.push(`creator = $${paramCount++}`);
+      params.push(metadata.creator);
+    }
+    if (metadata.date !== undefined) {
+      updates.push(`date = $${paramCount++}`);
+      params.push(metadata.date);
+    }
+    if (metadata.description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      params.push(metadata.description);
+    }
+    if (metadata.topics !== undefined) {
+      updates.push(`topics = $${paramCount++}`);
+      params.push(metadata.topics);
+    }
+
+    if (updates.length === 0) {
+      return await getSetById(id);
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    params.push(id);
+
+    const result = await client.query(`
+      UPDATE sets
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `, params);
+    return result.rows[0] as SetRow | undefined;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteSet(id: number) {
+  const client = await pool.connect();
+  try {
+    // Cascade delete will handle junction tables automatically
+    await client.query('DELETE FROM sets WHERE id = $1', [id]);
+    return true;
+  } catch (error) {
+    console.error('Error deleting set:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get question count for rounds and sets
+export async function getQuestionCountForRound(roundId: number): Promise<number> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT COUNT(*) as count
+      FROM question_rounds
+      WHERE round_id = $1
+    `, [roundId]);
+    return parseInt(result.rows[0].count, 10);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getQuestionCountForSet(setId: number): Promise<number> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT COUNT(*) as count
+      FROM question_sets
+      WHERE set_id = $1
+    `, [setId]);
+    return parseInt(result.rows[0].count, 10);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getRoundCountForSet(setId: number): Promise<number> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT COUNT(*) as count
+      FROM round_sets
+      WHERE set_id = $1
+    `, [setId]);
+    return parseInt(result.rows[0].count, 10);
   } finally {
     client.release();
   }

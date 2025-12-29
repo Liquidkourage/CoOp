@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Navigation from './components/Navigation';
 import { useUser } from './contexts/UserContext';
+import BulkOperations from './components/BulkOperations';
 
 interface ContentItem {
   id: string;
@@ -705,12 +706,17 @@ export default function HomePage() {
     );
   };
 
+  const [showBulkOps, setShowBulkOps] = useState(false);
+
   const renderBulkCopy = () => {
+    const selectedContent = getSelectedContent();
+    const selectedIds = selectedContent.map(item => parseInt(item.id)).filter(id => !isNaN(id));
+
     return (
       <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2>Bulk Copy Mode</h2>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={selectAll}
               style={{
@@ -739,6 +745,23 @@ export default function HomePage() {
             >
               Deselect All
             </button>
+            {selectedItems.size > 0 && (
+              <button
+                onClick={() => setShowBulkOps(true)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#0066cc',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                ➕ Add to Round/Set ({selectedItems.size})
+              </button>
+            )}
             <button
               onClick={() => {
                 const selected = getSelectedContent();
@@ -763,6 +786,12 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+        {showBulkOps && selectedIds.length > 0 && (
+          <BulkOperations
+            selectedQuestionIds={selectedIds}
+            onClose={() => setShowBulkOps(false)}
+          />
+        )}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
