@@ -16,6 +16,7 @@ interface Question {
   explanation: string | null;
   notes: string | null;
   alternateAnswers: string[] | null;
+  options: string[] | null;
   topics: string[] | null;
   difficulty: string | null;
   sequence: number;
