@@ -22,8 +22,10 @@ interface ContentItem {
     options?: string[]; // For multiple-choice questions: array of all answer options
     points?: number;
     timer?: number;
-    round?: string;
-    set?: string;
+    round?: string; // Deprecated - use rounds array instead
+    set?: string; // Deprecated - use sets array instead
+    rounds?: Array<{ id: number; name: string; sequence: number }>;
+    sets?: Array<{ id: number; name: string; sequence: number }>;
     explanation?: string;
     notes?: string; // Host notes
     source?: string; // URL/web resource that verifies question accuracy
@@ -182,23 +184,28 @@ export default function HomePage() {
   const downloadAsCSV = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join(','),
-      ...itemsToShow.map(item => [
-        `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.round || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.set || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.notes || '').replace(/"/g, '""'))}"`,
-        `"${((item.metadata.source || '').replace(/"/g, '""'))}"`
-      ].join(','))
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join(','),
+      ...itemsToShow.map(item => {
+        // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
+        const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
+        const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
+        return [
+          `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
+          `"${(rounds.replace(/"/g, '""'))}"`,
+          `"${(sets.replace(/"/g, '""'))}"`,
+          `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.notes || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.source || '').replace(/"/g, '""'))}"`
+        ].join(',');
+      })
     ].join('\n');
     downloadFile(csv, `trivia-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
   };
@@ -207,23 +214,28 @@ export default function HomePage() {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     // For Excel, we'll use TSV format (can be opened in Excel)
     const tsv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'].join('\t'),
-      ...itemsToShow.map(item => [
-        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
-        (item.metadata.answer || '').replace(/\t/g, ' '),
-        (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
-        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
-        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
-        (item.metadata.creator || '').replace(/\t/g, ' '),
-        (item.metadata.date || '').replace(/\t/g, ' '),
-        (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
-        (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
-        (item.metadata.round || '').replace(/\t/g, ' '),
-        (item.metadata.set || '').replace(/\t/g, ' '),
-        (item.metadata.explanation || '').replace(/\t/g, ' '),
-        (item.metadata.notes || '').replace(/\t/g, ' '),
-        (item.metadata.source || '').replace(/\t/g, ' ')
-      ].join('\t'))
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join('\t'),
+      ...itemsToShow.map(item => {
+        // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
+        const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
+        const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
+        return [
+          (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
+          (item.metadata.answer || '').replace(/\t/g, ' '),
+          (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
+          (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
+          (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
+          (item.metadata.creator || '').replace(/\t/g, ' '),
+          (item.metadata.date || '').replace(/\t/g, ' '),
+          (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
+          (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
+          rounds.replace(/\t/g, ' '),
+          sets.replace(/\t/g, ' '),
+          (item.metadata.explanation || '').replace(/\t/g, ' '),
+          (item.metadata.notes || '').replace(/\t/g, ' '),
+          (item.metadata.source || '').replace(/\t/g, ' ')
+        ].join('\t');
+      })
     ].join('\n');
     downloadFile(tsv, `trivia-export-${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
   };
@@ -240,8 +252,10 @@ export default function HomePage() {
       date: item.metadata.date,
       points: item.metadata.points,
       timer: item.metadata.timer,
-      round: item.metadata.round,
-      set: item.metadata.set,
+      rounds: item.metadata.rounds?.map(r => ({ id: r.id, name: r.name })) || (item.metadata.round ? [{ name: item.metadata.round }] : []),
+      sets: item.metadata.sets?.map(s => ({ id: s.id, name: s.name })) || (item.metadata.set ? [{ name: item.metadata.set }] : []),
+      round: item.metadata.round, // Deprecated - kept for backward compatibility
+      set: item.metadata.set, // Deprecated - kept for backward compatibility
       explanation: item.metadata.explanation,
       notes: item.metadata.notes,
       source: item.metadata.source,
@@ -882,8 +896,10 @@ export default function HomePage() {
       date: item.metadata.date || '',
       points: item.metadata.points,
       timer: item.metadata.timer,
-      round: item.metadata.round,
-      set: item.metadata.set,
+      rounds: item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '',
+      sets: item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '',
+      round: item.metadata.round, // Deprecated - kept for backward compatibility
+      set: item.metadata.set, // Deprecated - kept for backward compatibility
       explanation: item.metadata.explanation,
       notes: item.metadata.notes,
       source: item.metadata.source,
@@ -894,19 +910,22 @@ export default function HomePage() {
     })), null, 2);
     
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Round', 'Set', 'Explanation', 'Notes', 'Source'],
-      ...itemsToShow.map(item => [
-        `"${(item.metadata.question || item.metadata.description || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.options?.join(' | ') || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.date || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.points?.toString() || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.timer?.toString() || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.round || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.set || '').replace(/"/g, '""')}"`,
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'],
+      ...itemsToShow.map(item => {
+        const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
+        const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
+        return [
+          `"${(item.metadata.question || item.metadata.description || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.answer || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.options?.join(' | ') || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.date || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.points?.toString() || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.timer?.toString() || '').replace(/"/g, '""')}"`,
+          `"${(rounds.replace(/"/g, '""'))}"`,
+          `"${(sets.replace(/"/g, '""'))}"`,
         `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
         `"${(item.metadata.source || '').replace(/"/g, '""')}"`
@@ -1487,6 +1506,96 @@ export default function HomePage() {
                         ))}
                       </div>
                     )}
+                    {(item.metadata.rounds && item.metadata.rounds.length > 0) || 
+                     (item.metadata.sets && item.metadata.sets.length > 0) || 
+                     item.metadata.round || item.metadata.set ? (
+                      <div style={{
+                        marginTop: '10px',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px'
+                      }}>
+                        {item.metadata.rounds?.map(round => (
+                          <Link
+                            key={round.id}
+                            href={`/rounds/${round.id}`}
+                            style={{
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              background: '#e3f2fd',
+                              color: '#0066cc',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              textDecoration: 'none',
+                              fontWeight: '500',
+                              border: '1px solid #90caf9'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#bbdefb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#e3f2fd';
+                            }}
+                          >
+                            Round: {round.name}
+                          </Link>
+                        ))}
+                        {item.metadata.sets?.map(set => (
+                          <Link
+                            key={set.id}
+                            href={`/sets/${set.id}`}
+                            style={{
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              background: '#f3e5f5',
+                              color: '#7b1fa2',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              textDecoration: 'none',
+                              fontWeight: '500',
+                              border: '1px solid #ce93d8'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#e1bee7';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#f3e5f5';
+                            }}
+                          >
+                            Set: {set.name}
+                          </Link>
+                        ))}
+                        {/* Legacy round/set display (deprecated) */}
+                        {item.metadata.round && !item.metadata.rounds?.length && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            background: '#e3f2fd',
+                            color: '#0066cc',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500',
+                            border: '1px solid #90caf9'
+                          }}>
+                            Round: {item.metadata.round}
+                          </span>
+                        )}
+                        {item.metadata.set && !item.metadata.sets?.length && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            background: '#f3e5f5',
+                            color: '#7b1fa2',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500',
+                            border: '1px solid #ce93d8'
+                          }}>
+                            Set: {item.metadata.set}
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
                     {item.metadata.answer && (
                       <div style={{
                         marginTop: '12px',

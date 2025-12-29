@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getRoundById, getQuestionsInRound } from '@/lib/db';
+import { initDatabase, getRoundById, addQuestionToRound } from '@/lib/db';
 
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -16,6 +16,7 @@ export async function GET(
       );
     }
     
+    // Verify round exists
     const round = await getRoundById(roundId);
     if (!round) {
       return NextResponse.json(
@@ -24,20 +25,29 @@ export async function GET(
       );
     }
     
-    const questions = await getQuestionsInRound(roundId);
+    const body = await request.json();
+    const questionId = body.questionId;
+    const sequence = body.sequence ?? 0;
+    
+    if (!questionId || typeof questionId !== 'number') {
+      return NextResponse.json(
+        { success: false, error: 'questionId is required' },
+        { status: 400 }
+      );
+    }
+    
+    await addQuestionToRound(questionId, roundId, sequence);
     
     return NextResponse.json({
       success: true,
-      round,
-      questions
+      message: 'Question added to round'
     });
   } catch (error) {
-    console.error('Error loading round:', error);
+    console.error('Error adding question to round:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to load round' },
+      { success: false, error: 'Failed to add question to round' },
       { status: 500 }
     );
   }
 }
-
 

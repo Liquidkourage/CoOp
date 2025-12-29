@@ -46,7 +46,7 @@ export async function initDatabase() {
       ADD COLUMN IF NOT EXISTS options TEXT[]
     `);
 
-    // Add new fields: points, timer, round, set, explanation
+    // Add new fields: points, timer, explanation
     await client.query(`
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS points INTEGER
@@ -55,6 +55,8 @@ export async function initDatabase() {
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS timer INTEGER
     `);
+    // Note: round and set TEXT columns are deprecated - use junction tables instead
+    // Keeping them for backward compatibility during migration
     await client.query(`
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS round TEXT
@@ -67,6 +69,13 @@ export async function initDatabase() {
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS explanation TEXT
     `);
+    
+    // Migrate existing round/set TEXT data to junction tables
+    try {
+      await migrateRoundSetData();
+    } catch (error) {
+      console.warn('Migration warning (non-critical):', error);
+    }
     await client.query(`
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS notes TEXT
@@ -81,8 +90,7 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_content_topics ON content_items USING GIN(topics);
       CREATE INDEX IF NOT EXISTS idx_content_date ON content_items(date);
       CREATE INDEX IF NOT EXISTS idx_content_difficulty ON content_items(difficulty);
-      CREATE INDEX IF NOT EXISTS idx_content_round ON content_items(round);
-      CREATE INDEX IF NOT EXISTS idx_content_set ON content_items(set);
+      -- Note: round/set indexes removed - use junction tables instead
     `);
 
     // Create rounds table
@@ -171,8 +179,8 @@ export interface ContentRow {
   options: string[] | null;
   points: number | null;
   timer: number | null;
-  round: string | null;
-  set: string | null;
+  round: string | null; // Deprecated - use junction tables. Kept for backward compatibility.
+  set: string | null; // Deprecated - use junction tables. Kept for backward compatibility.
   explanation: string | null;
   notes: string | null;
   alternate_answers: string[] | null;
@@ -200,8 +208,10 @@ export async function insertContent(metadata: {
   options?: string[];
   points?: number;
   timer?: number;
-  round?: string;
-  set?: string;
+  round?: string; // Deprecated - use roundIds instead. Kept for backward compatibility.
+  set?: string; // Deprecated - use setIds instead. Kept for backward compatibility.
+  roundIds?: number[]; // New: array of round IDs to link via junction table
+  setIds?: number[]; // New: array of set IDs to link via junction table
   explanation?: string;
   notes?: string;
   alternateAnswers?: string[];
@@ -214,6 +224,9 @@ export async function insertContent(metadata: {
 }) {
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    
+    // Insert question
     const result = await client.query(`
       INSERT INTO content_items (
         title, creator, date, topics, question_count, difficulty,
@@ -234,8 +247,8 @@ export async function insertContent(metadata: {
       metadata.options || [],
       metadata.points || null,
       metadata.timer || null,
-      metadata.round || null,
-      metadata.set || null,
+      metadata.round || null, // Deprecated - kept for backward compatibility
+      metadata.set || null, // Deprecated - kept for backward compatibility
       metadata.explanation || null,
       metadata.notes || null,
       metadata.alternateAnswers || [],
@@ -246,7 +259,94 @@ export async function insertContent(metadata: {
       metadata.files || [],
       metadata.filePaths || []
     ]);
+    
+    const questionId = result.rows[0].id;
+    
+    // Link to rounds via junction table
+    if (metadata.roundIds && metadata.roundIds.length > 0) {
+      for (let i = 0; i < metadata.roundIds.length; i++) {
+        await client.query(`
+          INSERT INTO question_rounds (question_id, round_id, sequence)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (question_id, round_id) DO UPDATE SET sequence = $3
+        `, [questionId, metadata.roundIds[i], i]);
+      }
+    }
+    
+    // Link to sets via junction table
+    if (metadata.setIds && metadata.setIds.length > 0) {
+      for (let i = 0; i < metadata.setIds.length; i++) {
+        await client.query(`
+          INSERT INTO question_sets (question_id, set_id, sequence)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (question_id, set_id) DO UPDATE SET sequence = $3
+        `, [questionId, metadata.setIds[i], i]);
+      }
+    }
+    
+    // Handle deprecated round/set TEXT fields (for backward compatibility)
+    // If round/set TEXT is provided but no IDs, try to find/create and link
+    if (metadata.round && !metadata.roundIds?.length) {
+      let roundResult = await client.query(
+        'SELECT id FROM rounds WHERE name = $1',
+        [metadata.round.trim()]
+      );
+      let roundId: number;
+      if (roundResult.rows.length === 0) {
+        const newRoundResult = await client.query(`
+          INSERT INTO rounds (name, creator, date, topics)
+          VALUES ($1, $2, $3, $4)
+          RETURNING id
+        `, [
+          metadata.round.trim(),
+          metadata.creator || null,
+          metadata.date || null,
+          metadata.topics || []
+        ]);
+        roundId = newRoundResult.rows[0].id;
+      } else {
+        roundId = roundResult.rows[0].id;
+      }
+      await client.query(`
+        INSERT INTO question_rounds (question_id, round_id, sequence)
+        VALUES ($1, $2, 0)
+        ON CONFLICT (question_id, round_id) DO UPDATE SET sequence = 0
+      `, [questionId, roundId]);
+    }
+    
+    if (metadata.set && !metadata.setIds?.length) {
+      let setResult = await client.query(
+        'SELECT id FROM sets WHERE name = $1',
+        [metadata.set.trim()]
+      );
+      let setId: number;
+      if (setResult.rows.length === 0) {
+        const newSetResult = await client.query(`
+          INSERT INTO sets (name, creator, date, topics)
+          VALUES ($1, $2, $3, $4)
+          RETURNING id
+        `, [
+          metadata.set.trim(),
+          metadata.creator || null,
+          metadata.date || null,
+          metadata.topics || []
+        ]);
+        setId = newSetResult.rows[0].id;
+      } else {
+        setId = setResult.rows[0].id;
+      }
+      await client.query(`
+        INSERT INTO question_sets (question_id, set_id, sequence)
+        VALUES ($1, $2, 0)
+        ON CONFLICT (question_id, set_id) DO UPDATE SET sequence = 0
+      `, [questionId, setId]);
+    }
+    
+    await client.query('COMMIT');
     return result.rows[0] as ContentRow;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -605,6 +705,99 @@ export async function getSetsForRound(roundId: number) {
       ORDER BY rs.sequence, s.created_at
     `, [roundId]);
     return result.rows as (SetRow & { sequence: number })[];
+  } finally {
+    client.release();
+  }
+}
+
+// Migration function to move round/set TEXT data to junction tables
+export async function migrateRoundSetData() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Get all questions with round/set TEXT values
+    const questions = await client.query(`
+      SELECT id, round, set, creator, date, topics
+      FROM content_items
+      WHERE (round IS NOT NULL AND round != '') OR (set IS NOT NULL AND set != '')
+    `);
+    
+    for (const question of questions.rows) {
+      // Handle round
+      if (question.round && question.round.trim()) {
+        // Find or create round
+        let roundResult = await client.query(
+          'SELECT id FROM rounds WHERE name = $1',
+          [question.round.trim()]
+        );
+        
+        let roundId: number;
+        if (roundResult.rows.length === 0) {
+          // Create round
+          const newRound = await client.query(`
+            INSERT INTO rounds (name, creator, date, topics)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+          `, [
+            question.round.trim(),
+            question.creator,
+            question.date,
+            question.topics || []
+          ]);
+          roundId = newRound.rows[0].id;
+        } else {
+          roundId = roundResult.rows[0].id;
+        }
+        
+        // Link question to round
+        await client.query(`
+          INSERT INTO question_rounds (question_id, round_id, sequence)
+          VALUES ($1, $2, 0)
+          ON CONFLICT (question_id, round_id) DO NOTHING
+        `, [question.id, roundId]);
+      }
+      
+      // Handle set
+      if (question.set && question.set.trim()) {
+        // Find or create set
+        let setResult = await client.query(
+          'SELECT id FROM sets WHERE name = $1',
+          [question.set.trim()]
+        );
+        
+        let setId: number;
+        if (setResult.rows.length === 0) {
+          // Create set
+          const newSet = await client.query(`
+            INSERT INTO sets (name, creator, date, topics)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+          `, [
+            question.set.trim(),
+            question.creator,
+            question.date,
+            question.topics || []
+          ]);
+          setId = newSet.rows[0].id;
+        } else {
+          setId = setResult.rows[0].id;
+        }
+        
+        // Link question to set
+        await client.query(`
+          INSERT INTO question_sets (question_id, set_id, sequence)
+          VALUES ($1, $2, 0)
+          ON CONFLICT (question_id, set_id) DO NOTHING
+        `, [question.id, setId]);
+      }
+    }
+    
+    await client.query('COMMIT');
+    return { migrated: questions.rows.length };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }

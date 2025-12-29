@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getSetById, getQuestionsInSet, getRoundsInSet } from '@/lib/db';
+import { initDatabase, getSetById, addQuestionToSet } from '@/lib/db';
 
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -16,6 +16,7 @@ export async function GET(
       );
     }
     
+    // Verify set exists
     const set = await getSetById(setId);
     if (!set) {
       return NextResponse.json(
@@ -24,22 +25,29 @@ export async function GET(
       );
     }
     
-    const questions = await getQuestionsInSet(setId);
-    const rounds = await getRoundsInSet(setId);
+    const body = await request.json();
+    const questionId = body.questionId;
+    const sequence = body.sequence ?? 0;
+    
+    if (!questionId || typeof questionId !== 'number') {
+      return NextResponse.json(
+        { success: false, error: 'questionId is required' },
+        { status: 400 }
+      );
+    }
+    
+    await addQuestionToSet(questionId, setId, sequence);
     
     return NextResponse.json({
       success: true,
-      set,
-      questions,
-      rounds
+      message: 'Question added to set'
     });
   } catch (error) {
-    console.error('Error loading set:', error);
+    console.error('Error adding question to set:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to load set' },
+      { success: false, error: 'Failed to add question to set' },
       { status: 500 }
     );
   }
 }
-
 

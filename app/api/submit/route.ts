@@ -60,8 +60,10 @@ export async function POST(request: NextRequest) {
       options: metadata.options, // Structured options array for multiple-choice questions
       points: metadata.points,
       timer: metadata.timer,
-      round: metadata.round,
-      set: metadata.set,
+      round: metadata.round, // Deprecated - use roundIds instead
+      set: metadata.set, // Deprecated - use setIds instead
+      roundIds: metadata.roundIds, // New: array of round IDs
+      setIds: metadata.setIds, // New: array of set IDs
       explanation: metadata.explanation,
       notes: metadata.notes,
       alternateAnswers: metadata.alternateAnswers,

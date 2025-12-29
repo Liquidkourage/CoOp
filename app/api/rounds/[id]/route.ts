@@ -7,16 +7,17 @@ export async function GET(
 ) {
   try {
     await initDatabase();
-    const roundId = parseInt(params.id);
+    const id = parseInt(params.id);
     
-    if (isNaN(roundId)) {
+    if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'Invalid round ID' },
         { status: 400 }
       );
     }
     
-    const round = await getRoundById(roundId);
+    const round = await getRoundById(id);
+    
     if (!round) {
       return NextResponse.json(
         { success: false, error: 'Round not found' },
@@ -24,12 +25,26 @@ export async function GET(
       );
     }
     
-    const questions = await getQuestionsInRound(roundId);
+    const questions = await getQuestionsInRound(id);
     
     return NextResponse.json({
       success: true,
-      round,
-      questions
+      round: {
+        ...round,
+        questions: questions.map(q => ({
+          id: q.id,
+          question: q.description,
+          answer: q.answer,
+          points: q.points,
+          timer: q.timer,
+          explanation: q.explanation,
+          notes: q.notes,
+          alternateAnswers: q.alternate_answers,
+          topics: q.topics,
+          difficulty: q.difficulty,
+          sequence: q.sequence
+        }))
+      }
     });
   } catch (error) {
     console.error('Error loading round:', error);
@@ -39,5 +54,4 @@ export async function GET(
     );
   }
 }
-
 
