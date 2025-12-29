@@ -16,6 +16,7 @@ interface Question {
   explanation: string | null;
   notes: string | null;
   alternateAnswers: string[] | null;
+  options: string[] | null;
   topics: string[] | null;
   difficulty: string | null;
   sequence: number;
@@ -436,6 +437,38 @@ export default function SetDetailPage() {
                   <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
                     {question.question || 'No question text'}
                   </div>
+                  {question.options && question.options.length > 0 && (
+                    <div style={{
+                      marginTop: '12px',
+                      marginBottom: '12px',
+                      padding: '12px',
+                      background: '#f8f9fa',
+                      borderRadius: '6px',
+                      border: '1px solid #e0e0e0'
+                    }}>
+                      <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '0.9rem', color: '#666' }}>
+                        Options:
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {question.options.map((opt, optIdx) => (
+                          <div key={optIdx} style={{
+                            padding: '8px 12px',
+                            background: '#fff',
+                            borderRadius: '4px',
+                            fontSize: '0.95rem',
+                            border: '1px solid #dee2e6',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: '600', color: '#0066cc', marginRight: '10px', minWidth: '24px' }}>
+                              {String.fromCharCode(65 + optIdx)}.
+                            </span>
+                            <span dangerouslySetInnerHTML={{ __html: opt }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {question.answer && (
                     <div style={{ fontSize: '14px', color: '#28a745', fontWeight: '600' }}>
                       Answer: {question.answer}

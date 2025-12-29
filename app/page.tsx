@@ -1646,6 +1646,35 @@ export default function HomePage() {
                           : (item.metadata.question || item.metadata.description)}
                       </div>
                     )}
+                    {item.metadata.options && item.metadata.options.length > 0 && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: '#f8f9fa',
+                        borderRadius: '6px',
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '0.9rem', color: '#666' }}>
+                          Options:
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {item.metadata.options.map((opt, optIdx) => (
+                            <div key={optIdx} style={{
+                              padding: '6px 10px',
+                              background: '#fff',
+                              borderRadius: '4px',
+                              fontSize: '0.9rem',
+                              border: '1px solid #dee2e6'
+                            }}>
+                              <span style={{ fontWeight: '600', color: '#0066cc', marginRight: '8px' }}>
+                                {String.fromCharCode(65 + optIdx)}.
+                              </span>
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {item.metadata.topics && item.metadata.topics.length > 0 && (
                       <div className="topics">
                         {item.metadata.topics.map((topic, idx) => (
