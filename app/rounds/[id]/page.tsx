@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '../../components/Navigation';
 import AddQuestionModal from '../../components/AddQuestionModal';
+import Breadcrumbs from '../../components/Breadcrumbs';
 
 interface Question {
   id: number;
