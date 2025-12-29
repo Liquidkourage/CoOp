@@ -17,9 +17,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Load current user from localStorage on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('current-user');
-    if (savedUser) {
-      setCurrentUserState(savedUser);
+    // Check localStorage directly to avoid hydration issues
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('current-user');
+      if (savedUser) {
+        setCurrentUserState(savedUser);
+      }
     }
     
     // Load list of users who have configurations or have logged in before

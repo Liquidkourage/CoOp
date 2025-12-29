@@ -10,76 +10,56 @@ export default function LoginPage() {
   const { currentUser, setCurrentUser, availableUsers, addUser } = useUser();
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Redirect if already logged in (but only on mount, not during login)
+  // Check localStorage directly on mount to avoid hydration issues
   useEffect(() => {
-    // Only redirect if user was already logged in when page loaded
-    // Don't redirect if we're in the middle of logging in
-    if (currentUser && !loading && username === '') {
-      router.push('/');
+    setMounted(true);
+    const savedUser = localStorage.getItem('current-user');
+    if (savedUser) {
+      // User is already logged in, redirect immediately
+      window.location.href = '/';
     }
-  }, []); // Only run on mount
+  }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setError('');
-    setLoading(true);
 
     if (!username.trim()) {
       setError('Please enter a username');
-      setLoading(false);
       return;
     }
 
-    try {
-      const trimmedUsername = username.trim();
-      console.log('Logging in user:', trimmedUsername);
-      
-      // Set user in localStorage first
-      localStorage.setItem('current-user', trimmedUsername);
-      
-      // Update available users list
-      const existingUsers = JSON.parse(localStorage.getItem('available-users') || '[]');
-      if (!existingUsers.includes(trimmedUsername)) {
-        existingUsers.push(trimmedUsername);
-        localStorage.setItem('available-users', JSON.stringify(existingUsers));
-      }
-      
-      // Update context
-      addUser(trimmedUsername);
-      
-      // Clear the form
-      setUsername('');
-      
-      // Navigate immediately - don't wait
-      window.location.href = '/';
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Failed to login. Please try again.');
-      setLoading(false);
+    const trimmedUsername = username.trim();
+    
+    // Set user in localStorage first (this is the source of truth)
+    localStorage.setItem('current-user', trimmedUsername);
+    
+    // Update available users list
+    const existingUsers = JSON.parse(localStorage.getItem('available-users') || '[]');
+    if (!existingUsers.includes(trimmedUsername)) {
+      existingUsers.push(trimmedUsername);
+      localStorage.setItem('available-users', JSON.stringify(existingUsers));
     }
+    
+    // Update context (for immediate UI feedback)
+    addUser(trimmedUsername);
+    
+    // Use window.location.replace to prevent back button issues
+    window.location.replace('/');
   };
 
-  const handleSelectUser = async (user: string) => {
-    try {
-      setLoading(true);
-      console.log('Selecting user:', user);
-      
-      // Set user in localStorage first
-      localStorage.setItem('current-user', user);
-      
-      // Update context
-      setCurrentUser(user);
-      
-      // Navigate immediately
-      window.location.href = '/';
-    } catch (err) {
-      console.error('Select user error:', err);
-      setError('Failed to select user. Please try again.');
-      setLoading(false);
-    }
+  const handleSelectUser = (user: string) => {
+    // Set user in localStorage first (this is the source of truth)
+    localStorage.setItem('current-user', user);
+    
+    // Update context (for immediate UI feedback)
+    setCurrentUser(user);
+    
+    // Use window.location.replace to prevent back button issues
+    window.location.replace('/');
   };
 
   return (
@@ -169,37 +149,29 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
               style={{
                 width: '100%',
                 padding: '14px',
-                background: loading 
-                  ? '#ccc' 
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '6px',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                opacity: loading ? 0.7 : 1
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
               }}
               onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
-                }
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
               }}
               onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                }
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
               }}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              Login
             </button>
           </form>
 
