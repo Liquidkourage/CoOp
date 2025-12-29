@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUser } from '../contexts/UserContext';
 
 interface NavItem {
   href: string;
@@ -28,8 +29,17 @@ const legacyNavItems: NavItem[] = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { currentUser } = useUser();
 
-  const allItems = [...navItems, ...legacyNavItems];
+  // Filter out login link if already logged in
+  const filteredNavItems = navItems.filter(item => {
+    if (item.href === '/login') {
+      return !currentUser; // Only show login if not logged in
+    }
+    return true;
+  });
+
+  const allItems = [...filteredNavItems, ...legacyNavItems];
 
   return (
     <nav style={{ 
