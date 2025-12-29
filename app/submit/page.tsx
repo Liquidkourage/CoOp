@@ -50,6 +50,13 @@ export default function SubmitPage() {
   const [newSetName, setNewSetName] = useState('');
 
   useEffect(() => {
+    // Auto-fill creator from logged-in user
+    if (currentUser && !formData.creator) {
+      setFormData(prev => ({ ...prev, creator: currentUser }));
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     // Load rounds and sets for dropdowns
     Promise.all([
       fetch('/api/rounds').then(r => r.json()),
