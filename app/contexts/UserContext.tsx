@@ -23,37 +23,37 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (savedUser) {
         setCurrentUserState(savedUser);
       }
-    }
-    
-    // Load list of users who have configurations or have logged in before
-    const users = new Set<string>();
-    
-    // Add current user if exists
-    if (savedUser) {
-      users.add(savedUser);
-    }
-    
-    // Load users from config keys
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('excel-config-') || key?.startsWith('trivnow-config-') || key?.startsWith('import-config-')) {
-        const username = key.replace('excel-config-', '').replace('trivnow-config-', '').replace(/^import-config-.*?-/, '');
-        if (username) users.add(username);
+      
+      // Load list of users who have configurations or have logged in before
+      const users = new Set<string>();
+      
+      // Add current user if exists
+      if (savedUser) {
+        users.add(savedUser);
       }
-    }
-    
-    // Also check for users stored in a dedicated list
-    const usersList = localStorage.getItem('available-users');
-    if (usersList) {
-      try {
-        const parsed = JSON.parse(usersList);
-        parsed.forEach((user: string) => users.add(user));
-      } catch (e) {
-        // Ignore parse errors
+      
+      // Load users from config keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('excel-config-') || key?.startsWith('trivnow-config-') || key?.startsWith('import-config-')) {
+          const username = key.replace('excel-config-', '').replace('trivnow-config-', '').replace(/^import-config-.*?-/, '');
+          if (username) users.add(username);
+        }
       }
+      
+      // Also check for users stored in a dedicated list
+      const usersList = localStorage.getItem('available-users');
+      if (usersList) {
+        try {
+          const parsed = JSON.parse(usersList);
+          parsed.forEach((user: string) => users.add(user));
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      setAvailableUsers(Array.from(users));
     }
-    
-    setAvailableUsers(Array.from(users));
   }, []);
 
   const setCurrentUser = (user: string | null) => {
