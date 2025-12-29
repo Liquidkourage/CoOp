@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { href: '/import', label: 'Import CSV/Excel', icon: '📥' },
   { href: '/configure-import', label: 'Configure Import Format', icon: '⚙️' },
   { href: '/admin/delete', label: 'Delete Content', icon: '🗑️' },
+  { href: '/login', label: 'Login', icon: '🔐' },
 ];
 
 // Legacy configuration pages (still accessible but configure-import is preferred)

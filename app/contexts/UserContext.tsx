@@ -22,15 +22,34 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setCurrentUserState(savedUser);
     }
     
-    // Load list of users who have configurations
+    // Load list of users who have configurations or have logged in before
     const users = new Set<string>();
+    
+    // Add current user if exists
+    if (savedUser) {
+      users.add(savedUser);
+    }
+    
+    // Load users from config keys
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key?.startsWith('excel-config-') || key?.startsWith('trivnow-config-')) {
-        const username = key.replace('excel-config-', '').replace('trivnow-config-', '');
+      if (key?.startsWith('excel-config-') || key?.startsWith('trivnow-config-') || key?.startsWith('import-config-')) {
+        const username = key.replace('excel-config-', '').replace('trivnow-config-', '').replace(/^import-config-.*?-/, '');
         if (username) users.add(username);
       }
     }
+    
+    // Also check for users stored in a dedicated list
+    const usersList = localStorage.getItem('available-users');
+    if (usersList) {
+      try {
+        const parsed = JSON.parse(usersList);
+        parsed.forEach((user: string) => users.add(user));
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
     setAvailableUsers(Array.from(users));
   }, []);
 
@@ -40,10 +59,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('current-user', user);
       // Add to available users if not already there
       setAvailableUsers(prev => {
-        if (!prev.includes(user)) {
-          return [...prev, user];
-        }
-        return prev;
+        const updated = !prev.includes(user) ? [...prev, user] : prev;
+        // Also save to localStorage for persistence
+        localStorage.setItem('available-users', JSON.stringify(updated));
+        return updated;
       });
     } else {
       localStorage.removeItem('current-user');
@@ -51,10 +70,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   const addUser = (username: string) => {
-    if (username && !availableUsers.includes(username)) {
-      setAvailableUsers(prev => [...prev, username]);
+    if (username) {
+      setAvailableUsers(prev => {
+        const updated = !prev.includes(username) ? [...prev, username] : prev;
+        // Save to localStorage for persistence
+        localStorage.setItem('available-users', JSON.stringify(updated));
+        return updated;
+      });
+      setCurrentUser(username);
     }
-    setCurrentUser(username);
   };
 
   return (
