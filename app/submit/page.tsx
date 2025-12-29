@@ -352,7 +352,7 @@ export default function SubmitPage() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                Answer
+                Answer (Correct Answer)
               </label>
               <input
                 type="text"
@@ -367,6 +367,29 @@ export default function SubmitPage() {
                 }}
                 placeholder="The correct answer"
               />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Incorrect Options (Distractors)
+              </label>
+              <textarea
+                value={formData.options}
+                onChange={(e) => setFormData({ ...formData, options: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                placeholder="Incorrect options separated by semicolons (e.g., Option A; Option B; Option C)"
+              />
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                Separate multiple incorrect options with semicolons (;). These are the distractors for multiple-choice questions.
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
