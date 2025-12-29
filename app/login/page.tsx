@@ -10,6 +10,7 @@ export default function LoginPage() {
   const { currentUser, setCurrentUser, availableUsers, addUser } = useUser();
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -18,23 +19,52 @@ export default function LoginPage() {
     }
   }, [currentUser, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
+    setLoading(true);
 
     if (!username.trim()) {
       setError('Please enter a username');
+      setLoading(false);
       return;
     }
 
-    const trimmedUsername = username.trim();
-    addUser(trimmedUsername);
-    router.push('/');
+    try {
+      const trimmedUsername = username.trim();
+      console.log('Logging in user:', trimmedUsername);
+      addUser(trimmedUsername);
+      
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Navigate to home page
+      console.log('Navigating to home...');
+      window.location.href = '/'; // Use window.location as fallback
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Failed to login. Please try again.');
+      setLoading(false);
+    }
   };
 
-  const handleSelectUser = (user: string) => {
-    setCurrentUser(user);
-    router.push('/');
+  const handleSelectUser = async (user: string) => {
+    try {
+      setLoading(true);
+      console.log('Selecting user:', user);
+      setCurrentUser(user);
+      
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log('Navigating to home...');
+      window.location.href = '/'; // Use window.location as fallback
+    } catch (err) {
+      console.error('Select user error:', err);
+      setError('Failed to select user. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -124,29 +154,37 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '14px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: loading 
+                  ? '#ccc' 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '6px',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                opacity: loading ? 0.7 : 1
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
+                if (!loading) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                if (!loading) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                }
               }}
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
 
