@@ -926,10 +926,11 @@ export default function HomePage() {
           `"${(item.metadata.timer?.toString() || '').replace(/"/g, '""')}"`,
           `"${(rounds.replace(/"/g, '""'))}"`,
           `"${(sets.replace(/"/g, '""'))}"`,
-        `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
-        `"${(item.metadata.source || '').replace(/"/g, '""')}"`
-      ].join(','))
+          `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.source || '').replace(/"/g, '""'))}"`
+        ].join(',');
+      })
     ].join('\n');
 
     return (
