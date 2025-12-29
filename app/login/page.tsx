@@ -15,11 +15,8 @@ export default function LoginPage() {
   // Check localStorage directly on mount to avoid hydration issues
   useEffect(() => {
     setMounted(true);
-    const savedUser = localStorage.getItem('current-user');
-    if (savedUser) {
-      // User is already logged in, redirect immediately
-      window.location.href = '/';
-    }
+    // Don't auto-redirect - let users see the login page even if already logged in
+    // They can switch users or stay logged in
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -175,6 +172,39 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {currentUser && (
+            <div style={{
+              padding: '12px',
+              background: '#e8f5e9',
+              color: '#2e7d32',
+              borderRadius: '6px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              textAlign: 'center'
+            }}>
+              Currently logged in as: <strong>{currentUser}</strong>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('current-user');
+                  setCurrentUser(null);
+                  setUsername('');
+                }}
+                style={{
+                  marginLeft: '10px',
+                  padding: '4px 8px',
+                  background: '#fff',
+                  color: '#2e7d32',
+                  border: '1px solid #2e7d32',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
           {availableUsers.length > 0 && (
             <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid #eee' }}>
               <p style={{
@@ -184,7 +214,7 @@ export default function LoginPage() {
                 textAlign: 'center',
                 fontWeight: '600'
               }}>
-                Or select a previous user:
+                {currentUser ? 'Switch to another user:' : 'Or select a previous user:'}
               </p>
               <div style={{
                 display: 'flex',
