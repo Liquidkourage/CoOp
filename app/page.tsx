@@ -928,7 +928,7 @@ export default function HomePage() {
           `"${(sets.replace(/"/g, '""'))}"`,
           `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
           `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
-          `"${(item.metadata.source || '').replace(/"/g, '""'))}"`
+          `"${(item.metadata.source || '').replace(/"/g, '""')}"`
         ].join(',');
       })
     ].join('\n');
