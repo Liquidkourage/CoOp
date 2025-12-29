@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '../components/Navigation';
+import { useUser } from '../contexts/UserContext';
 
 interface Round {
   id: number;
@@ -17,6 +18,7 @@ interface Set {
 
 export default function SubmitPage() {
   const router = useRouter();
+  const { currentUser } = useUser();
   const [formData, setFormData] = useState({
     creator: '',
     date: new Date().toISOString().split('T')[0],
