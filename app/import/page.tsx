@@ -1098,6 +1098,15 @@ export default function ImportPage() {
                         <option value="types">Types (comma-separated)</option>
                         <option value="description">Description</option>
                         <option value="answer">Answer / Correct Answer</option>
+                        <option value="options">Incorrect Options (Distractors) - semicolon-delimited</option>
+                        <option value="alternateAnswers">Alternate Answers (comma-separated)</option>
+                        <option value="points">Points</option>
+                        <option value="timer">Time Limit (seconds)</option>
+                        <option value="round">Round</option>
+                        <option value="set">Quiz Set/Event</option>
+                        <option value="explanation">Explanation</option>
+                        <option value="notes">Host Notes</option>
+                        <option value="source">Source</option>
                       </select>
                     </div>
                   ))}
