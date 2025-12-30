@@ -1541,44 +1541,62 @@ export default function HomePage() {
               marginBottom: '25px'
             }}>
               <h2 style={{ marginBottom: '20px' }}>Browse by Creator</h2>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '15px'
-              }}>
-                {allCreators.map(creator => (
-                  <button
-                    key={creator}
-                    onClick={() => {
-                      setSelectedCreator(creator);
-                      setViewMode('search');
-                      setSearchQuery('');
-                      setTimeout(() => handleSearch(), 100);
-                    }}
-                    style={{
-                      padding: '15px',
-                      background: '#f5f5f5',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                      fontSize: '0.95rem',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e8f5e9';
-                      e.currentTarget.style.borderColor = '#4caf50';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f5f5f5';
-                      e.currentTarget.style.borderColor = '#e0e0e0';
-                    }}
-                  >
-                    {creator}
-                  </button>
-                ))}
-              </div>
+              {allCreators.length === 0 ? (
+                <div style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#666',
+                  background: '#f9f9f9',
+                  borderRadius: '8px',
+                  border: '2px dashed #ddd'
+                }}>
+                  <p style={{ fontSize: '18px', marginBottom: '10px' }}>No creators found</p>
+                  <p style={{ fontSize: '14px' }}>
+                    Creators will appear here once content is added to the repository.
+                    <br />
+                    Add a creator when submitting content or importing files.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '15px'
+                }}>
+                  {allCreators.map(creator => (
+                    <button
+                      key={creator}
+                      onClick={() => {
+                        setSelectedCreator(creator);
+                        setViewMode('search');
+                        setSearchQuery('');
+                        setTimeout(() => handleSearch(), 100);
+                      }}
+                      style={{
+                        padding: '15px',
+                        background: '#f5f5f5',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                        fontSize: '0.95rem',
+                        fontWeight: '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#e8f5e9';
+                        e.currentTarget.style.borderColor = '#4caf50';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f5f5f5';
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                      }}
+                    >
+                      {creator}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
