@@ -33,26 +33,126 @@ interface ImportConfig {
 
 // Available target fields in our system
 const TARGET_FIELDS = [
-  { value: 'question', label: 'Question (Required)', required: true },
-  { value: 'answer', label: 'Answer', required: false },
-  { value: 'creator', label: 'Creator (Required)', required: true },
-  { value: 'date', label: 'Date', required: false },
-  { value: 'topics', label: 'Topics', required: false },
-  { value: 'types', label: 'Question Types', required: false },
-  { value: 'difficulty', label: 'Difficulty', required: false },
-  { value: 'points', label: 'Points', required: false },
-  { value: 'timer', label: 'Time Limit (seconds)', required: false },
-  { value: 'round', label: 'Round', required: false },
-  { value: 'set', label: 'Quiz Set/Event', required: false },
-  { value: 'explanation', label: 'Explanation', required: false },
-  { value: 'notes', label: 'Host Notes', required: false },
-  { value: 'alternateAnswers', label: 'Alternative Answers', required: false },
-  { value: 'tags', label: 'Tags', required: false },
-  { value: 'source', label: 'Source', required: false },
-  { value: 'language', label: 'Language', required: false },
-  { value: 'questionCount', label: 'Question Count', required: false },
-  { value: 'options', label: 'Incorrect Options (Distractors) - semicolon-delimited', required: false },
-  { value: 'skip', label: 'Skip (ignore this column)', required: false },
+  { 
+    value: 'question', 
+    label: 'Question (Required)', 
+    required: true,
+    description: 'The actual trivia question text. This is the main content of each question.'
+  },
+  { 
+    value: 'answer', 
+    label: 'Answer', 
+    required: false,
+    description: 'The correct answer to the question. For multiple-choice questions, this is the correct option.'
+  },
+  { 
+    value: 'creator', 
+    label: 'Creator (Required)', 
+    required: true,
+    description: 'The author or creator of the question. If not mapped, will use the logged-in user.'
+  },
+  { 
+    value: 'date', 
+    label: 'Date', 
+    required: false,
+    description: 'The date when the question was created or published. Format: YYYY-MM-DD or any standard date format.'
+  },
+  { 
+    value: 'topics', 
+    label: 'Topics', 
+    required: false,
+    description: 'Categories or subjects for the question. Use comma-separated values (e.g., "science, history, geography").'
+  },
+  { 
+    value: 'types', 
+    label: 'Question Types', 
+    required: false,
+    description: 'The type of question (e.g., "multiple-choice", "true-false", "short-answer"). Comma-separated if multiple.'
+  },
+  { 
+    value: 'difficulty', 
+    label: 'Difficulty', 
+    required: false,
+    description: 'Difficulty level: beginner, easy, medium, hard, or expert.'
+  },
+  { 
+    value: 'points', 
+    label: 'Points', 
+    required: false,
+    description: 'Point value for the question (numeric, e.g., 10, 25, 50).'
+  },
+  { 
+    value: 'timer', 
+    label: 'Time Limit (seconds)', 
+    required: false,
+    description: 'Time limit in seconds for answering the question (numeric, e.g., 30, 60).'
+  },
+  { 
+    value: 'round', 
+    label: 'Round', 
+    required: false,
+    description: 'The round name this question belongs to. Questions can belong to multiple rounds.'
+  },
+  { 
+    value: 'set', 
+    label: 'Quiz Set/Event', 
+    required: false,
+    description: 'The quiz set or event name this question belongs to. Sets can contain multiple rounds.'
+  },
+  { 
+    value: 'explanation', 
+    label: 'Explanation', 
+    required: false,
+    description: 'An explanation of why the answer is correct. Useful for educational purposes.'
+  },
+  { 
+    value: 'notes', 
+    label: 'Host Notes', 
+    required: false,
+    description: 'Internal notes for the quiz host (not shown to players). Useful for hosting tips or additional context.'
+  },
+  { 
+    value: 'alternateAnswers', 
+    label: 'Alternative Answers', 
+    required: false,
+    description: 'Acceptable variations of the correct answer. Use comma-separated values (e.g., "USA, United States, U.S.A.").'
+  },
+  { 
+    value: 'tags', 
+    label: 'Tags', 
+    required: false,
+    description: 'Additional tags for organization and search. Comma-separated values.'
+  },
+  { 
+    value: 'source', 
+    label: 'Source', 
+    required: false,
+    description: 'URL or reference to a reliable web resource that verifies the question\'s accuracy (for fact-checking).'
+  },
+  { 
+    value: 'language', 
+    label: 'Language', 
+    required: false,
+    description: 'Language code (e.g., "en" for English, "es" for Spanish). Defaults to "en" if not specified.'
+  },
+  { 
+    value: 'questionCount', 
+    label: 'Question Count', 
+    required: false,
+    description: 'Number of questions in a set or round (numeric). Usually only needed for sets/rounds, not individual questions.'
+  },
+  { 
+    value: 'options', 
+    label: 'Incorrect Options (Distractors)', 
+    required: false,
+    description: 'For multiple-choice questions: the incorrect answer options (distractors). Separate multiple options with semicolons (e.g., "Option A; Option B; Option C"). Do NOT include the correct answer here.'
+  },
+  { 
+    value: 'skip', 
+    label: 'Skip (ignore this column)', 
+    required: false,
+    description: 'Ignore this column during import. Use for columns you don\'t need.'
+  },
 ];
 
 export default function ConfigureImportPage() {
