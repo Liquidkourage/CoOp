@@ -962,9 +962,19 @@ export default function ConfigureImportPage() {
         {/* Step 5: Save Configuration */}
         {step === 'save' && (
           <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h2>Step 5: Save Configuration</h2>
+            <h2>Step 5: {editingConfigName ? 'Update' : 'Save'} Configuration</h2>
+            {editingConfigName && (
+              <div style={{ padding: '12px', background: '#d1ecf1', borderRadius: '6px', marginBottom: '15px', border: '2px solid #0c5460', fontSize: '14px' }}>
+                <strong>✏️ Editing:</strong> <span style={{ color: '#0c5460' }}>{editingConfigName}</span>
+                <div style={{ marginTop: '8px', fontSize: '13px', color: '#0c5460' }}>
+                  Saving will update the existing configuration. You can change the name if you want to create a copy instead.
+                </div>
+              </div>
+            )}
             <p style={{ color: '#666', marginBottom: '20px' }}>
-              Give this import format a name so you can use it later when importing content.
+              {editingConfigName 
+                ? 'Update the configuration name if needed, or keep the same name to update the existing configuration.'
+                : 'Give this import format a name so you can use it later when importing content.'}
             </p>
 
             <div style={{ marginBottom: '20px' }}>
