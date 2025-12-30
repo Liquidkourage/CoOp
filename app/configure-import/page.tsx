@@ -727,14 +727,29 @@ export default function ConfigureImportPage() {
                             border: '1px solid #ccc',
                             fontSize: '14px'
                           }}
+                          title={currentMapping ? TARGET_FIELDS.find(f => f.value === currentMapping)?.description : ''}
                         >
                           <option value="">-- Select Field --</option>
                           {TARGET_FIELDS.map(field => (
-                            <option key={field.value} value={field.value}>
+                            <option key={field.value} value={field.value} title={field.description}>
                               {field.label} {field.required ? '⭐' : ''}
                             </option>
                           ))}
                         </select>
+                        {currentMapping && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            padding: '8px', 
+                            background: '#e7f3ff', 
+                            borderRadius: '4px', 
+                            fontSize: '12px',
+                            color: '#0066cc',
+                            border: '1px solid #b3d9ff'
+                          }}>
+                            <strong>ℹ️ </strong>
+                            {TARGET_FIELDS.find(f => f.value === currentMapping)?.description || 'No description available'}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
