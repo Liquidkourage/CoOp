@@ -8,10 +8,12 @@ export async function GET() {
     try {
       await initDatabase();
       creators = await getAllCreators();
+      console.log(`[Creators API] Found ${creators.length} creators from database:`, creators);
     } catch (dbError) {
       console.warn('Database not available, using file system:', dbError);
       const content = loadAllContent();
       creators = getAllFileCreators(content);
+      console.log(`[Creators API] Found ${creators.length} creators from file system:`, creators);
     }
     
     return NextResponse.json({
