@@ -121,23 +121,41 @@ export default function HomePage() {
   const [allCreators, setAllCreators] = useState<string[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/topics').then(r => r.json()),
-      fetch('/api/creators').then(r => r.json())
-    ]).then(([topicsData, creatorsData]) => {
-      if (topicsData.success) {
-        setAllTopics(topicsData.topics || []);
-      } else {
-        console.error('Failed to load topics:', topicsData.error);
+    const loadTopicsAndCreators = async () => {
+      try {
+        const topicsResponse = await fetch('/api/topics');
+        const topicsData = await topicsResponse.json();
+        console.log('Topics API response:', topicsData);
+        
+        if (topicsData.success) {
+          const topics = topicsData.topics || [];
+          console.log('Setting topics:', topics);
+          setAllTopics(topics);
+        } else {
+          console.error('Failed to load topics:', topicsData.error);
+        }
+      } catch (error) {
+        console.error('Error fetching topics:', error);
       }
-      if (creatorsData.success) {
-        setAllCreators(creatorsData.creators || []);
-      } else {
-        console.error('Failed to load creators:', creatorsData.error);
+
+      try {
+        const creatorsResponse = await fetch('/api/creators');
+        const creatorsData = await creatorsResponse.json();
+        console.log('Creators API response:', creatorsData);
+        
+        if (creatorsData.success) {
+          const creators = creatorsData.creators || [];
+          console.log('Setting creators:', creators);
+          setAllCreators(creators);
+        } else {
+          console.error('Failed to load creators:', creatorsData.error);
+        }
+      } catch (error) {
+        console.error('Error fetching creators:', error);
       }
-    }).catch((error) => {
-      console.error('Error fetching topics/creators:', error);
-    });
+    };
+
+    loadTopicsAndCreators();
   }, []);
 
   const handleSearch = () => {

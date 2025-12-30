@@ -450,9 +450,16 @@ export async function getAllCreators() {
       SELECT DISTINCT creator
       FROM content_items
       WHERE creator IS NOT NULL
+        AND creator != ''
+        AND trim(creator) != ''
       ORDER BY creator
     `);
-    return result.rows.map(row => row.creator) as string[];
+    const creators = result.rows
+      .map(row => row.creator)
+      .filter((creator): creator is string => 
+        creator !== null && creator !== undefined && typeof creator === 'string' && creator.trim() !== ''
+      );
+    return creators;
   } finally {
     client.release();
   }
