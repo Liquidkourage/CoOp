@@ -169,6 +169,7 @@ export default function ConfigureImportPage() {
   const [sheetName, setSheetName] = useState<string>('');
   const [testResults, setTestResults] = useState<any[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<ImportConfig[]>([]);
+  const [editingConfigName, setEditingConfigName] = useState<string | null>(null);
 
   // Load saved configurations for current user
   useEffect(() => {
@@ -466,9 +467,23 @@ export default function ConfigureImportPage() {
     };
 
     const configKey = `import-config-${currentUser}-${formatName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
-    localStorage.setItem(configKey, JSON.stringify(config));
+    const isOverwriting = editingConfigName && editingConfigName.toLowerCase().replace(/[^a-z0-9]/g, '-') === formatName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
     
-    alert(`Configuration "${formatName}" saved successfully! You can now use this format when importing.`);
+    if (isOverwriting || editingConfigName === formatName.trim()) {
+      // Overwriting existing config
+      localStorage.setItem(configKey, JSON.stringify(config));
+      alert(`Configuration "${formatName}" updated successfully!`);
+    } else {
+      // Check if name already exists
+      const existingConfig = savedConfigs.find(c => c.formatName.toLowerCase() === formatName.trim().toLowerCase());
+      if (existingConfig) {
+        if (!confirm(`A configuration named "${formatName}" already exists. Do you want to overwrite it?`)) {
+          return;
+        }
+      }
+      localStorage.setItem(configKey, JSON.stringify(config));
+      alert(`Configuration "${formatName}" saved successfully! You can now use this format when importing.`);
+    }
     
     // Reset form
     setStep('upload');
@@ -478,6 +493,7 @@ export default function ConfigureImportPage() {
     setColumnMapping({});
     setFormatName('');
     setTestResults([]);
+    setEditingConfigName(null);
     
     // Reload saved configs
     const configs: ImportConfig[] = [];
@@ -497,7 +513,7 @@ export default function ConfigureImportPage() {
     setSavedConfigs(configs);
   };
 
-  const loadConfiguration = (config: ImportConfig) => {
+  const loadConfiguration = (config: ImportConfig, isEdit: boolean = false) => {
     setFormatName(config.formatName);
     setFileType(config.fileType);
     setColumnMapping(config.columnMapping);
@@ -506,11 +522,15 @@ export default function ConfigureImportPage() {
     if (config.sheetName) {
       setSheetName(config.sheetName);
     }
+    setEditingConfigName(isEdit ? config.formatName : null);
     setStep('mapping');
   };
 
   const deleteConfiguration = (configName: string) => {
     if (!currentUser) return;
+    if (!confirm(`Are you sure you want to delete the configuration "${configName}"? This cannot be undone.`)) {
+      return;
+    }
     const configKey = `import-config-${currentUser}-${configName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
     localStorage.removeItem(configKey);
     
@@ -530,6 +550,9 @@ export default function ConfigureImportPage() {
       }
     }
     setSavedConfigs(configs);
+    if (editingConfigName === configName) {
+      setEditingConfigName(null);
+    }
   };
 
   return (
@@ -583,16 +606,25 @@ export default function ConfigureImportPage() {
                       </div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <button
-                          onClick={() => loadConfiguration(config)}
-                          style={{ padding: '5px 15px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                          onClick={() => loadConfiguration(config, true)}
+                          title="Edit this configuration"
+                          style={{ padding: '5px 15px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
                         >
-                          Load
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => loadConfiguration(config)}
+                          title="Load this configuration for importing (read-only)"
+                          style={{ padding: '5px 15px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                        >
+                          📂 Load
                         </button>
                         <button
                           onClick={() => deleteConfiguration(config.formatName)}
-                          style={{ padding: '5px 15px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                          title="Delete this configuration"
+                          style={{ padding: '5px 15px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
                         >
-                          Delete
+                          🗑️ Delete
                         </button>
                       </div>
                     </div>
@@ -683,6 +715,29 @@ export default function ConfigureImportPage() {
         {step === 'mapping' && (
           <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <h2>Step 3: Map Your Columns</h2>
+            {editingConfigName && (
+              <div style={{ padding: '12px', background: '#d1ecf1', borderRadius: '6px', marginBottom: '15px', border: '2px solid #0c5460', fontSize: '14px' }}>
+                <strong>✏️ Editing:</strong> <span style={{ color: '#0c5460' }}>{editingConfigName}</span>
+                <button
+                  onClick={() => {
+                    setEditingConfigName(null);
+                    setFormatName('');
+                  }}
+                  style={{ 
+                    marginLeft: '15px', 
+                    padding: '4px 10px', 
+                    background: '#6c757d', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Cancel Edit
+                </button>
+              </div>
+            )}
             <p style={{ color: '#666', marginBottom: '20px' }}>
               Map each column from your file to a field in our system. 
               <strong> At minimum, you must map "Question" and "Creator" fields.</strong>
