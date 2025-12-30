@@ -687,6 +687,11 @@ export default function ConfigureImportPage() {
               Map each column from your file to a field in our system. 
               <strong> At minimum, you must map "Question" and "Creator" fields.</strong>
             </p>
+            
+            <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', border: '2px solid #ffc107' }}>
+              <strong>💡 Tip:</strong> Select a field from any dropdown below to see its description. 
+              Or scroll down to view all field descriptions at once.
+            </div>
 
             <div style={{ marginBottom: '30px' }}>
               {headers.map((header, idx) => {
