@@ -1682,8 +1682,8 @@ export default function HomePage() {
                           : (item.metadata.question || item.metadata.description)}
                       </div>
                     )}
-                    {/* Options and Answer Section - Displayed Together */}
-                    {(item.metadata.options && item.metadata.options.length > 0) || item.metadata.answer ? (
+                    {/* Multiple Choice Options - Only show if there are multiple options */}
+                    {item.metadata.options && item.metadata.options.length > 0 ? (
                       <div style={{
                         marginTop: '15px',
                         padding: '15px',
@@ -1697,16 +1697,11 @@ export default function HomePage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {(() => {
                             // Combine incorrect options with correct answer for display
-                            const allOptions = item.metadata.options ? [...item.metadata.options] : [];
+                            const allOptions = [...item.metadata.options];
                             const correctAnswer = item.metadata.answer;
                             
                             // If there's a correct answer and it's not already in the options, add it
                             if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
-                              allOptions.push(correctAnswer);
-                            }
-                            
-                            // If no options but there's an answer, show just the answer
-                            if (allOptions.length === 0 && correctAnswer) {
                               allOptions.push(correctAnswer);
                             }
                             
@@ -1747,6 +1742,18 @@ export default function HomePage() {
                             });
                           })()}
                         </div>
+                      </div>
+                    ) : item.metadata.answer ? (
+                      /* Simple answer display for non-multiple-choice questions */
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '12px',
+                        background: '#e8f5e9',
+                        borderRadius: '6px',
+                        border: '1px solid #4caf50'
+                      }}>
+                        <strong style={{ color: '#2e7d32', fontSize: '1rem' }}>Answer:</strong>{' '}
+                        <span style={{ fontSize: '0.95rem', fontWeight: '500', color: '#1b5e20' }}>{item.metadata.answer}</span>
                       </div>
                     ) : null}
                     {item.metadata.topics && item.metadata.topics.length > 0 && (
