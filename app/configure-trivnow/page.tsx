@@ -122,9 +122,29 @@ export default function ConfigureTrivNowPage() {
       username: currentUser
     };
     
+    const isUpdating = configured;
     localStorage.setItem(`trivnow-config-${currentUser}`, JSON.stringify(config));
     setConfigured(true);
-    alert(`Configuration saved for ${currentUser}! The import page will now use these mappings for TrivNow format detection.`);
+    alert(`Configuration ${isUpdating ? 'updated' : 'saved'} for ${currentUser}! The import page will now use these mappings for TrivNow format detection.`);
+  };
+
+  const handleDelete = () => {
+    if (!currentUser) {
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete the TrivNow configuration for ${currentUser}? This cannot be undone.`)) {
+      return;
+    }
+    
+    localStorage.removeItem(`trivnow-config-${currentUser}`);
+    setConfigured(false);
+    setMapping({});
+    setGroupingFields([]);
+    setDetectionPatterns([]);
+    setHeaders([]);
+    setFile(null);
+    alert('Configuration deleted successfully.');
   };
 
   // Load existing config for current user
@@ -171,8 +191,42 @@ export default function ConfigureTrivNowPage() {
 
       <main className="container">
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          {configured && (
+            <div style={{ background: '#d1ecf1', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #0c5460' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong style={{ color: '#0c5460' }}>✓ Configuration Saved</strong>
+                  <div style={{ fontSize: '14px', color: '#0c5460', marginTop: '5px' }}>
+                    You have a saved TrivNow configuration for <strong>{currentUser}</strong>. 
+                    {headers.length === 0 && ' Upload a new file to edit it, or delete it to start fresh.'}
+                  </div>
+                </div>
+                <button
+                  onClick={handleDelete}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#dc3545',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  🗑️ Delete Configuration
+                </button>
+              </div>
+            </div>
+          )}
+
           <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <h2 style={{ marginBottom: '20px' }}>Step 1: Upload Sample CSV</h2>
+            <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
+              {configured 
+                ? 'Upload a new CSV file to edit your existing configuration, or continue with the current settings below.'
+                : 'Upload a sample TrivNow CSV file to configure automatic detection and mapping.'}
+            </p>
             <input type="file" accept=".csv" onChange={handleFileChange} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', marginBottom: '20px' }} />
           </div>
 
@@ -272,9 +326,28 @@ export default function ConfigureTrivNowPage() {
               </div>
 
               <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-                <h2 style={{ marginBottom: '20px' }}>Step 5: Save Configuration</h2>
-                <button onClick={handleSave} style={{ padding: '12px 24px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer', marginBottom: '15px' }}>Save Configuration</button>
-                {configured && <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '4px', color: '#2e7d32' }}>✓ Configuration saved! The import page will use these mappings for TrivNow format.</div>}
+                <h2 style={{ marginBottom: '20px' }}>Step 5: {configured ? 'Update' : 'Save'} Configuration</h2>
+                {configured && (
+                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #ffc107', fontSize: '14px' }}>
+                    <strong>✏️ Editing existing configuration</strong> - Click "Update Configuration" to save your changes.
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                  <button 
+                    onClick={handleSave} 
+                    style={{ padding: '12px 24px', background: '#0066cc', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}
+                  >
+                    {configured ? '💾 Update Configuration' : '💾 Save Configuration'}
+                  </button>
+                  {configured && (
+                    <button 
+                      onClick={handleDelete} 
+                      style={{ padding: '12px 24px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}
+                    >
+                      🗑️ Delete Configuration
+                    </button>
+                  )}
+                </div>
               </div>
             </>
           )}
