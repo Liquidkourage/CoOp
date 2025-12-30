@@ -380,43 +380,80 @@ export default function RoundDetailPage() {
                   <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
                     {question.question || 'No question text'}
                   </div>
-                  {question.options && question.options.length > 0 && (
+                  {(question.options && question.options.length > 0) || question.answer ? (
                     <div style={{
                       marginTop: '12px',
                       marginBottom: '12px',
-                      padding: '12px',
-                      background: '#f8f9fa',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0'
+                      padding: '15px',
+                      background: '#f0f7ff',
+                      borderRadius: '8px',
+                      border: '2px solid #0066cc'
                     }}>
-                      <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '0.9rem', color: '#666' }}>
-                        Incorrect Options (Distractors):
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {question.options.map((opt, optIdx) => (
-                          <div key={optIdx} style={{
-                            padding: '8px 12px',
-                            background: '#fff',
-                            borderRadius: '4px',
-                            fontSize: '0.95rem',
-                            border: '1px solid #dee2e6',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}>
-                            <span style={{ fontWeight: '600', color: '#0066cc', marginRight: '10px', minWidth: '24px' }}>
-                              {String.fromCharCode(65 + optIdx)}.
-                            </span>
-                            <span dangerouslySetInnerHTML={{ __html: opt }} />
+                      {question.options && question.options.length > 0 ? (
+                        <>
+                          <div style={{ fontWeight: '700', marginBottom: '12px', fontSize: '1rem', color: '#0066cc' }}>
+                            Multiple Choice Options:
                           </div>
-                        ))}
-                      </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {(() => {
+                              // Combine incorrect options with correct answer for display
+                              const allOptions = [...question.options];
+                              const correctAnswer = question.answer;
+                              
+                              // If there's a correct answer and it's not already in the options, add it
+                              if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+                                allOptions.push(correctAnswer);
+                              }
+                              
+                              return allOptions.map((opt, optIdx) => {
+                                const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+                                return (
+                                  <div key={optIdx} style={{
+                                    padding: '8px 12px',
+                                    background: isCorrect ? '#e8f5e9' : '#fff',
+                                    borderRadius: '4px',
+                                    fontSize: '0.95rem',
+                                    border: isCorrect ? '2px solid #4caf50' : '2px solid #dee2e6',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                  }}>
+                                    <span style={{ 
+                                      fontWeight: '700', 
+                                      color: isCorrect ? '#2e7d32' : '#666', 
+                                      marginRight: '10px', 
+                                      minWidth: '28px', 
+                                      fontSize: '1rem' 
+                                    }}>
+                                      {String.fromCharCode(65 + optIdx)}.
+                                    </span>
+                                    <span 
+                                      style={{ 
+                                        fontWeight: isCorrect ? '600' : '400',
+                                        color: isCorrect ? '#2e7d32' : '#333'
+                                      }}
+                                      dangerouslySetInnerHTML={{ __html: opt }} 
+                                    />
+                                    {isCorrect && (
+                                      <span style={{ marginLeft: '8px', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>
+                                        ✓ Correct Answer
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </>
+                      ) : (
+                        question.answer && (
+                          <div>
+                            <strong style={{ color: '#2e7d32', fontSize: '1rem' }}>Answer:</strong>{' '}
+                            <span style={{ fontSize: '0.95rem', fontWeight: '500' }} dangerouslySetInnerHTML={{ __html: question.answer }} />
+                          </div>
+                        )
+                      )}
                     </div>
-                  )}
-                  {question.answer && (
-                    <div style={{ fontSize: '14px', color: '#28a745', fontWeight: '600' }}>
-                      Answer: {question.answer}
-                    </div>
-                  )}
+                  ) : null}
                   {question.alternateAnswers && question.alternateAnswers.length > 0 && (
                     <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
                       Alternate Answers: {question.alternateAnswers.join(', ')}
