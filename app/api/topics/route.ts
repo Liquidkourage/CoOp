@@ -19,6 +19,24 @@ export async function GET() {
           FROM content_items
         `);
         console.log('[Topics API] Diagnostic data:', diagnosticResult.rows[0]);
+        
+        // Sample some actual data to see what's stored
+        const sampleResult = await client.query(`
+          SELECT id, creator, topics, array_length(topics, 1) as topics_count
+          FROM content_items
+          LIMIT 5
+        `);
+        console.log('[Topics API] Sample data:', JSON.stringify(sampleResult.rows, null, 2));
+        
+        // Check what the unnest query actually returns
+        const unnestTest = await client.query(`
+          SELECT DISTINCT unnest(topics) AS topic
+          FROM content_items
+          WHERE topics IS NOT NULL 
+            AND array_length(topics, 1) > 0
+          LIMIT 10
+        `);
+        console.log('[Topics API] Unnest test result:', unnestTest.rows);
       } finally {
         client.release();
       }
