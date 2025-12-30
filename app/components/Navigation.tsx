@@ -22,12 +22,6 @@ const navItems: NavItem[] = [
   { href: '/login', label: 'Login', icon: '🔐' },
 ];
 
-// Legacy configuration pages (still accessible but configure-import is preferred)
-const legacyNavItems: NavItem[] = [
-  { href: '/configure-trivnow', label: 'Configure TrivNow (Legacy)', icon: '📋' },
-  { href: '/configure-excel', label: 'Configure Excel (Legacy)', icon: '📊' },
-];
-
 export default function Navigation() {
   const pathname = usePathname();
   const { currentUser } = useUser();
@@ -40,8 +34,6 @@ export default function Navigation() {
     return true;
   });
 
-  const allItems = [...filteredNavItems, ...legacyNavItems];
-
   return (
     <nav style={{ 
       marginTop: '20px', 
@@ -53,9 +45,8 @@ export default function Navigation() {
       borderRadius: '8px',
       border: '1px solid #dee2e6'
     }}>
-      {allItems.map((item) => {
+      {filteredNavItems.map((item) => {
         const isActive = pathname === item.href;
-        const isLegacy = legacyNavItems.some(legacy => legacy.href === item.href);
         return (
           <Link
             key={item.href}
@@ -71,9 +62,7 @@ export default function Navigation() {
               transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              opacity: isLegacy ? 0.8 : 1,
-              fontSize: isLegacy ? '0.9em' : '1em'
+              gap: '6px'
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
@@ -85,7 +74,6 @@ export default function Navigation() {
                 e.currentTarget.style.background = 'transparent';
               }
             }}
-            title={isLegacy ? 'Legacy page - Use Configure Import Format instead' : undefined}
           >
             {item.icon && <span>{item.icon}</span>}
             {item.label}
