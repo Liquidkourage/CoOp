@@ -140,15 +140,22 @@ export default function HomePage() {
 
       try {
         const creatorsResponse = await fetch('/api/creators');
+        if (!creatorsResponse.ok) {
+          console.error('Creators API response not OK:', creatorsResponse.status, creatorsResponse.statusText);
+          return;
+        }
         const creatorsData = await creatorsResponse.json();
         console.log('Creators API response:', creatorsData);
+        console.log('Creators count:', creatorsData.count);
+        console.log('Creators array:', creatorsData.creators);
         
         if (creatorsData.success) {
           const creators = creatorsData.creators || [];
           console.log('Setting creators:', creators);
+          console.log('Creators array length:', creators.length);
           setAllCreators(creators);
         } else {
-          console.error('Failed to load creators:', creatorsData.error);
+          console.error('Failed to load creators:', creatorsData.error, creatorsData.details);
         }
       } catch (error) {
         console.error('Error fetching creators:', error);
