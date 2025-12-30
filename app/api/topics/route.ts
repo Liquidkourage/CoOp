@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllTopics, initDatabase } from '@/lib/db';
+import { getAllTopics, initDatabase, pool } from '@/lib/db';
 import { loadAllContent, getAllTopics as getAllFileTopics } from '@/lib/content';
 
 export async function GET() {
@@ -7,6 +7,22 @@ export async function GET() {
     let topics;
     try {
       await initDatabase();
+      
+      // Diagnostic query to check data
+      const client = await pool.connect();
+      try {
+        const diagnosticResult = await client.query(`
+          SELECT 
+            COUNT(*) as total_items,
+            COUNT(CASE WHEN topics IS NOT NULL AND array_length(topics, 1) > 0 THEN 1 END) as items_with_topics,
+            COUNT(DISTINCT creator) as unique_creators
+          FROM content_items
+        `);
+        console.log('[Topics API] Diagnostic data:', diagnosticResult.rows[0]);
+      } finally {
+        client.release();
+      }
+      
       topics = await getAllTopics();
       console.log(`[Topics API] Found ${topics.length} topics from database:`, topics);
     } catch (dbError) {
