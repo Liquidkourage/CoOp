@@ -1682,35 +1682,70 @@ export default function HomePage() {
                           : (item.metadata.question || item.metadata.description)}
                       </div>
                     )}
-                    {item.metadata.options && item.metadata.options.length > 0 && (
+                    {/* Options and Answer Section - Displayed Together */}
+                    {(item.metadata.options && item.metadata.options.length > 0) || item.metadata.answer ? (
                       <div style={{
-                        marginTop: '12px',
-                        padding: '12px',
-                        background: '#f8f9fa',
-                        borderRadius: '6px',
-                        border: '1px solid #e0e0e0'
+                        marginTop: '15px',
+                        padding: '15px',
+                        background: '#f0f7ff',
+                        borderRadius: '8px',
+                        border: '2px solid #0066cc'
                       }}>
-                        <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '0.9rem', color: '#666' }}>
-                          Incorrect Options (Distractors):
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {item.metadata.options.map((opt, optIdx) => (
-                            <div key={optIdx} style={{
-                              padding: '6px 10px',
-                              background: '#fff',
-                              borderRadius: '4px',
-                              fontSize: '0.9rem',
-                              border: '1px solid #dee2e6'
-                            }}>
-                              <span style={{ fontWeight: '600', color: '#0066cc', marginRight: '8px' }}>
-                                {String.fromCharCode(65 + optIdx)}.
-                              </span>
-                              {opt}
+                        {item.metadata.options && item.metadata.options.length > 0 ? (
+                          <>
+                            <div style={{ fontWeight: '700', marginBottom: '12px', fontSize: '1rem', color: '#0066cc' }}>
+                              Multiple Choice Options:
                             </div>
-                          ))}
-                        </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {/* Show incorrect options first */}
+                              {item.metadata.options.map((opt, optIdx) => (
+                                <div key={optIdx} style={{
+                                  padding: '8px 12px',
+                                  background: '#fff',
+                                  borderRadius: '4px',
+                                  fontSize: '0.95rem',
+                                  border: '2px solid #dee2e6',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}>
+                                  <span style={{ fontWeight: '700', color: '#666', marginRight: '10px', minWidth: '28px', fontSize: '1rem' }}>
+                                    {String.fromCharCode(65 + optIdx)}.
+                                  </span>
+                                  <span>{opt}</span>
+                                </div>
+                              ))}
+                              {/* Show correct answer last, highlighted */}
+                              {item.metadata.answer && (
+                                <div style={{
+                                  padding: '8px 12px',
+                                  background: '#e8f5e9',
+                                  borderRadius: '4px',
+                                  fontSize: '0.95rem',
+                                  border: '2px solid #4caf50',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  marginTop: '4px'
+                                }}>
+                                  <span style={{ fontWeight: '700', color: '#2e7d32', marginRight: '10px', minWidth: '28px', fontSize: '1rem' }}>
+                                    {String.fromCharCode(65 + item.metadata.options.length)}.
+                                  </span>
+                                  <span style={{ fontWeight: '600', color: '#2e7d32' }}>{item.metadata.answer}</span>
+                                  <span style={{ marginLeft: '8px', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>(Correct Answer)</span>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          /* If no options but there's an answer, show it simply */
+                          item.metadata.answer && (
+                            <div>
+                              <strong style={{ color: '#2e7d32', fontSize: '1rem' }}>Answer:</strong>{' '}
+                              <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>{item.metadata.answer}</span>
+                            </div>
+                          )
+                        )}
                       </div>
-                    )}
+                    ) : null}
                     {item.metadata.topics && item.metadata.topics.length > 0 && (
                       <div className="topics">
                         {item.metadata.topics.map((topic, idx) => (
@@ -1808,18 +1843,6 @@ export default function HomePage() {
                         )}
                       </div>
                     ) : null}
-                    {item.metadata.answer && (
-                      <div style={{
-                        marginTop: '12px',
-                        padding: '10px',
-                        background: '#e8f5e9',
-                        borderRadius: '4px',
-                        fontSize: '0.9rem'
-                      }}>
-                        <strong style={{ color: '#2e7d32' }}>Answer:</strong>{' '}
-                        <span style={{ color: '#1b5e20' }}>{item.metadata.answer}</span>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
