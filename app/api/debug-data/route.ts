@@ -34,12 +34,35 @@ export async function GET() {
         FROM content_items
       `);
       
-      // Get distinct creators
+      // Get distinct creators - multiple queries to debug
       const creatorsQuery = await client.query(`
         SELECT DISTINCT creator
         FROM content_items
         WHERE creator IS NOT NULL AND creator != ''
         LIMIT 20
+      `);
+      
+      // Also check with the same query as getAllCreators
+      const getAllCreatorsQuery = await client.query(`
+        SELECT DISTINCT creator
+        FROM content_items
+        WHERE creator IS NOT NULL
+          AND creator != ''
+          AND trim(creator) != ''
+        ORDER BY creator
+      `);
+      
+      // Check all creator values including null/empty
+      const allCreatorValues = await client.query(`
+        SELECT 
+          creator,
+          CASE WHEN creator IS NULL THEN 'NULL' ELSE 'NOT_NULL' END as null_status,
+          CASE WHEN creator = '' THEN 'EMPTY' ELSE 'NOT_EMPTY' END as empty_status,
+          LENGTH(COALESCE(creator, '')) as length,
+          trim(COALESCE(creator, '')) as trimmed
+        FROM content_items
+        ORDER BY creator
+        LIMIT 30
       `);
       
       // Get all topics using unnest
@@ -56,6 +79,8 @@ export async function GET() {
         stats: statsQuery.rows[0],
         sample: sampleQuery.rows,
         creators: creatorsQuery.rows.map(r => r.creator),
+        getAllCreatorsResult: getAllCreatorsQuery.rows.map(r => r.creator),
+        allCreatorValues: allCreatorValues.rows,
         topics: topicsQuery.rows.map(r => r.topic),
         rawCreators: creatorsQuery.rows,
         rawTopics: topicsQuery.rows
