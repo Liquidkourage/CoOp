@@ -210,11 +210,17 @@ export default function HomePage() {
         // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
         const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
         const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
+        // Combine incorrect options with correct answer
+        const allOptions = item.metadata.options ? [...item.metadata.options] : [];
+        const correctAnswer = item.metadata.answer;
+        if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+          allOptions.push(correctAnswer);
+        }
         return [
           `"${((item.metadata.question || item.metadata.description || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.answer || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.alternateAnswers?.join(' | ') || '').replace(/"/g, '""'))}"`,
-          `"${((item.metadata.options?.join(' | ') || '').replace(/"/g, '""'))}"`,
+          `"${((allOptions.join(' | ') || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
@@ -240,11 +246,17 @@ export default function HomePage() {
         // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
         const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
         const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
+        // Combine incorrect options with correct answer
+        const allOptions = item.metadata.options ? [...item.metadata.options] : [];
+        const correctAnswer = item.metadata.answer;
+        if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+          allOptions.push(correctAnswer);
+        }
         return [
           (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
           (item.metadata.answer || '').replace(/\t/g, ' '),
           (item.metadata.alternateAnswers?.join(' | ') || '').replace(/\t/g, ' '),
-          (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
+          (allOptions.join(' | ') || '').replace(/\t/g, ' '),
           (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
           (item.metadata.creator || '').replace(/\t/g, ' '),
           (item.metadata.date || '').replace(/\t/g, ' '),
@@ -300,10 +312,21 @@ export default function HomePage() {
     return content.filter(item => selectedItems.has(item.id));
   };
 
-  // Helper function to format options for display
-  const formatOptions = (options?: string[]): string => {
-    if (!options || options.length === 0) return '';
-    return options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join('\n');
+  // Helper function to format options for display (includes correct answer)
+  const formatOptions = (options?: string[], correctAnswer?: string): string => {
+    if (!options || options.length === 0) {
+      // If no options but there's an answer, return empty (answer will be shown separately)
+      return '';
+    }
+    // Combine incorrect options with correct answer
+    const allOptions = [...options];
+    if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+      allOptions.push(correctAnswer);
+    }
+    return allOptions.map((opt, idx) => {
+      const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+      return `${String.fromCharCode(65 + idx)}. ${opt}${isCorrect ? ' ✓' : ''}`;
+    }).join('\n');
   };
 
   const renderQAPairs = () => {
@@ -311,7 +334,7 @@ export default function HomePage() {
     const text = itemsToShow.map((item, idx) => {
       const q = item.metadata.question || item.metadata.description || 'No question';
       const optionsText = item.metadata.options && item.metadata.options.length > 0 
-        ? '\nOptions:\n' + formatOptions(item.metadata.options) 
+        ? '\nOptions:\n' + formatOptions(item.metadata.options, item.metadata.answer) 
         : '';
       const a = item.metadata.answer || 'No answer provided';
       return `Q${idx + 1}: ${q}${optionsText}\nA${idx + 1}: ${a}\n`;
@@ -353,16 +376,27 @@ export default function HomePage() {
               <div style={{ fontWeight: 'bold', color: '#0066cc', marginBottom: '8px' }}>
                 Q{idx + 1}: {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
-              {item.metadata.options && item.metadata.options.length > 0 && (
-                <div style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', color: '#666', fontSize: '13px' }}>
-                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>Options:</div>
-                  {item.metadata.options.map((opt, optIdx) => (
-                    <div key={optIdx} style={{ marginLeft: '10px' }}>
-                      {String.fromCharCode(65 + optIdx)}. {opt}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {item.metadata.options && item.metadata.options.length > 0 && (() => {
+                // Combine incorrect options with correct answer
+                const allOptions = [...item.metadata.options];
+                const correctAnswer = item.metadata.answer;
+                if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+                  allOptions.push(correctAnswer);
+                }
+                return (
+                  <div style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', color: '#666', fontSize: '13px' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>Options:</div>
+                    {allOptions.map((opt, optIdx) => {
+                      const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+                      return (
+                        <div key={optIdx} style={{ marginLeft: '10px', color: isCorrect ? '#28a745' : '#666', fontWeight: isCorrect ? '600' : '400' }}>
+                          {String.fromCharCode(65 + optIdx)}. {opt} {isCorrect && '✓'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <div style={{ color: '#28a745', marginLeft: '20px' }}>
                 A{idx + 1}: {item.metadata.answer || 'No answer provided'}
               </div>
@@ -383,7 +417,7 @@ export default function HomePage() {
     const text = itemsToShow.map((item, idx) => {
       const q = item.metadata.question || item.metadata.description || 'No question';
       const optionsText = item.metadata.options && item.metadata.options.length > 0 
-        ? '\n   ' + formatOptions(item.metadata.options).replace(/\n/g, '\n   ')
+        ? '\n   ' + formatOptions(item.metadata.options, item.metadata.answer).replace(/\n/g, '\n   ')
         : '';
       const a = item.metadata.answer || 'No answer provided';
       return `${idx + 1}. ${q}${optionsText}\n   Answer: ${a}\n`;
@@ -424,15 +458,26 @@ export default function HomePage() {
               <div style={{ fontWeight: '600', marginBottom: '10px' }}>
                 {idx + 1}. {item.metadata.question || item.metadata.description || item.metadata.title || 'No question'}
               </div>
-              {item.metadata.options && item.metadata.options.length > 0 && (
-                <div style={{ marginLeft: '30px', marginTop: '8px', marginBottom: '10px', color: '#666' }}>
-                  {item.metadata.options.map((opt, optIdx) => (
-                    <div key={optIdx} style={{ marginBottom: '4px' }}>
-                      {String.fromCharCode(65 + optIdx)}. {opt}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {item.metadata.options && item.metadata.options.length > 0 && (() => {
+                // Combine incorrect options with correct answer
+                const allOptions = [...item.metadata.options];
+                const correctAnswer = item.metadata.answer;
+                if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+                  allOptions.push(correctAnswer);
+                }
+                return (
+                  <div style={{ marginLeft: '30px', marginTop: '8px', marginBottom: '10px', color: '#666' }}>
+                    {allOptions.map((opt, optIdx) => {
+                      const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+                      return (
+                        <div key={optIdx} style={{ marginBottom: '4px', color: isCorrect ? '#28a745' : '#666', fontWeight: isCorrect ? '600' : '400' }}>
+                          {String.fromCharCode(65 + optIdx)}. {opt} {isCorrect && '✓'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <div style={{ marginLeft: '30px', color: '#555', fontStyle: 'italic' }}>
                 Answer: {item.metadata.answer || 'No answer provided'}
               </div>
@@ -447,14 +492,22 @@ export default function HomePage() {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const csv = [
       ['Question', 'Options', 'Answer', 'Topic', 'Creator', 'Date'].join('\t'),
-      ...itemsToShow.map(item => [
-        (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
-        (item.metadata.options?.join(' | ') || '').replace(/\t/g, ' '),
-        (item.metadata.answer || '').replace(/\t/g, ' '),
-        (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
-        (item.metadata.creator || '').replace(/\t/g, ' '),
-        (item.metadata.date || '').replace(/\t/g, ' ')
-      ].join('\t'))
+      ...itemsToShow.map(item => {
+        // Combine incorrect options with correct answer for display
+        const allOptions = item.metadata.options ? [...item.metadata.options] : [];
+        const correctAnswer = item.metadata.answer;
+        if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+          allOptions.push(correctAnswer);
+        }
+        return [
+          (item.metadata.question || item.metadata.description || '').replace(/\t/g, ' '),
+          (allOptions.join(' | ') || '').replace(/\t/g, ' '),
+          (item.metadata.answer || '').replace(/\t/g, ' '),
+          (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
+          (item.metadata.creator || '').replace(/\t/g, ' '),
+          (item.metadata.date || '').replace(/\t/g, ' ')
+        ].join('\t');
+      })
     ].join('\n');
     
     return (
