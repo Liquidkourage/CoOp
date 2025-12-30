@@ -558,8 +558,7 @@ export default function HomePage() {
             <thead>
               <tr style={{ background: '#e9ecef', fontWeight: '600' }}>
                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Question</th>
-                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Options</th>
-                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Answer</th>
+                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Options / Answer</th>
                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Topic</th>
                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Creator</th>
                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Date</th>
@@ -567,33 +566,44 @@ export default function HomePage() {
             </thead>
             <tbody>
               {itemsToShow.map((item, idx) => {
-                // Combine incorrect options with correct answer for display
-                const allOptions = item.metadata.options ? [...item.metadata.options] : [];
                 const correctAnswer = item.metadata.answer;
-                if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
-                  allOptions.push(correctAnswer);
+                // For multiple-choice questions, show all options
+                // For non-MC questions, just show the answer
+                let optionsDisplay;
+                if (item.metadata.options && item.metadata.options.length > 0) {
+                  // Multiple-choice: combine incorrect options with correct answer
+                  const allOptions = [...item.metadata.options];
+                  if (correctAnswer && !allOptions.some(opt => opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim())) {
+                    allOptions.push(correctAnswer);
+                  }
+                  optionsDisplay = allOptions.map((opt, optIdx) => {
+                    const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+                    return (
+                      <span key={optIdx} style={{ 
+                        display: 'block', 
+                        marginBottom: '4px',
+                        color: isCorrect ? '#28a745' : '#333',
+                        fontWeight: isCorrect ? '600' : '400'
+                      }}>
+                        {String.fromCharCode(65 + optIdx)}. {opt} {isCorrect && '✓'}
+                      </span>
+                    );
+                  });
+                } else if (correctAnswer) {
+                  // Non-MC: just show the answer
+                  optionsDisplay = (
+                    <span style={{ color: '#28a745', fontWeight: '500' }}>
+                      {correctAnswer}
+                    </span>
+                  );
+                } else {
+                  optionsDisplay = '-';
                 }
-                const optionsDisplay = allOptions.length > 0 
-                  ? allOptions.map((opt, optIdx) => {
-                      const isCorrect = correctAnswer && opt.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
-                      return (
-                        <span key={optIdx} style={{ 
-                          display: 'block', 
-                          marginBottom: '4px',
-                          color: isCorrect ? '#28a745' : '#333',
-                          fontWeight: isCorrect ? '600' : '400'
-                        }}>
-                          {String.fromCharCode(65 + optIdx)}. {opt} {isCorrect && '✓'}
-                        </span>
-                      );
-                    })
-                  : '-';
                 
                 return (
                   <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8f9fa' }}>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.question || item.metadata.description || '-'}</td>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6', fontSize: '13px' }}>{optionsDisplay}</td>
-                    <td style={{ padding: '10px', border: '1px solid #dee2e6', color: '#28a745', fontWeight: '500' }}>{item.metadata.answer || '-'}</td>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.topics?.join(', ') || '-'}</td>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.creator || '-'}</td>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.metadata.date || '-'}</td>
