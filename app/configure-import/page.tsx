@@ -736,18 +736,24 @@ export default function ConfigureImportPage() {
                             </option>
                           ))}
                         </select>
-                        {currentMapping && (
+                        {currentMapping && TARGET_FIELDS.find(f => f.value === currentMapping)?.description && (
                           <div style={{ 
-                            marginTop: '8px', 
-                            padding: '8px', 
+                            marginTop: '10px', 
+                            padding: '12px', 
                             background: '#e7f3ff', 
-                            borderRadius: '4px', 
-                            fontSize: '12px',
+                            borderRadius: '6px', 
+                            fontSize: '13px',
                             color: '#0066cc',
-                            border: '1px solid #b3d9ff'
+                            border: '2px solid #b3d9ff',
+                            lineHeight: '1.5'
                           }}>
-                            <strong>ℹ️ </strong>
-                            {TARGET_FIELDS.find(f => f.value === currentMapping)?.description || 'No description available'}
+                            <div style={{ fontWeight: '600', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>ℹ️</span>
+                              <span>Field Description:</span>
+                            </div>
+                            <div style={{ color: '#333', paddingLeft: '20px' }}>
+                              {TARGET_FIELDS.find(f => f.value === currentMapping)?.description}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -758,11 +764,31 @@ export default function ConfigureImportPage() {
             </div>
 
             <div style={{ padding: '15px', background: '#e7f3ff', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
-              <strong>ℹ️ Required Fields:</strong>
-              <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
-                <li><strong>Question</strong> - The actual trivia question text (required)</li>
-                <li><strong>Creator</strong> - Will automatically use the logged-in user if not mapped</li>
-              </ul>
+              <strong>ℹ️ Field Descriptions:</strong>
+              <details style={{ marginTop: '10px' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: '600', marginBottom: '10px', color: '#0066cc' }}>
+                  📖 Click to view all field descriptions
+                </summary>
+                <div style={{ marginTop: '10px', maxHeight: '400px', overflowY: 'auto', padding: '10px', background: '#fff', borderRadius: '4px' }}>
+                  {TARGET_FIELDS.map(field => (
+                    <div key={field.value} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #b3d9ff' }}>
+                      <strong style={{ color: '#0066cc', display: 'block', marginBottom: '4px' }}>
+                        {field.label} {field.required && '⭐'}
+                      </strong>
+                      <div style={{ marginTop: '4px', color: '#333', fontSize: '13px', lineHeight: '1.5' }}>
+                        {field.description}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+              <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #b3d9ff' }}>
+                <strong>Required Fields:</strong>
+                <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
+                  <li><strong>Question</strong> - The actual trivia question text (required)</li>
+                  <li><strong>Creator</strong> - Will automatically use the logged-in user if not mapped</li>
+                </ul>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
