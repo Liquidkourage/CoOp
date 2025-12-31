@@ -37,11 +37,13 @@ export async function GET() {
       console.log(`[Creators API] Found ${creators.length} creators from file system:`, creators);
     }
     
-    return NextResponse.json({
+    const response = {
       success: true,
       count: creators.length,
       creators
-    });
+    };
+    console.log('[Creators API] Returning response:', JSON.stringify(response, null, 2));
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error loading creators:', error);
     return NextResponse.json(
