@@ -35,6 +35,7 @@ export default function SubmitPage() {
     explanation: '',
     notes: '',
     source: '',
+    media: '',
   });
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -126,6 +127,7 @@ export default function SubmitPage() {
         explanation: formData.explanation.trim() || undefined,
         notes: formData.notes.trim() || undefined,
         source: formData.source.trim() || undefined,
+        media: formData.media.trim() || undefined,
       };
       
       formDataToSend.append('metadata', JSON.stringify(metadata));
@@ -591,6 +593,28 @@ export default function SubmitPage() {
               />
               <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
                 URL to a reliable web resource that verifies the question's accuracy (for fact-checking and credibility)
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                Media URL (Audio/Visual)
+              </label>
+              <input
+                type="url"
+                value={formData.media}
+                onChange={(e) => setFormData({ ...formData, media: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '16px'
+                }}
+                placeholder="https://example.com/audio.mp3 or https://example.com/image.jpg"
+              />
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                URL to audio or visual media associated with this question (e.g., audio clip, image, video)
               </p>
             </div>
 

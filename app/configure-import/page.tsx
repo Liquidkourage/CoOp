@@ -118,6 +118,12 @@ const TARGET_FIELDS = [
     description: 'URL or reference to a reliable web resource that verifies the question\'s accuracy (for fact-checking).'
   },
   { 
+    value: 'media', 
+    label: 'Media URL', 
+    required: false,
+    description: 'URL to audio or visual media associated with the question (e.g., audio clip, image, video). Examples: https://example.com/audio.mp3, https://example.com/image.jpg'
+  },
+  { 
     value: 'language', 
     label: 'Language', 
     required: false,

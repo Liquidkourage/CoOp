@@ -15,6 +15,7 @@ interface Question {
   notes: string | null;
   alternateAnswers: string[] | null;
   source: string | null;
+  media: string | null;
 }
 
 interface Round {
@@ -58,7 +59,7 @@ export default function RoundExportPage() {
   const downloadAsCSV = () => {
     if (!round) return;
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Explanation', 'Notes', 'Source'].join(','),
+      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Explanation', 'Notes', 'Source', 'Media'].join(','),
       ...round.questions.map(q => [
         `"${(q.question || '').replace(/"/g, '""')}"`,
         `"${(q.answer || '').replace(/"/g, '""')}"`,
@@ -66,7 +67,8 @@ export default function RoundExportPage() {
         `"${(q.topics?.join('; ') || '').replace(/"/g, '""')}"`,
         `"${(q.explanation || '').replace(/"/g, '""')}"`,
         `"${(q.notes || '').replace(/"/g, '""')}"`,
-        `"${(q.source || '').replace(/"/g, '""')}"`
+        `"${(q.source || '').replace(/"/g, '""')}"`,
+        `"${(q.media || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
     downloadFile(csv, `${round.name.replace(/[^a-z0-9]/gi, '_')}-export.csv`, 'text/csv');
@@ -85,7 +87,8 @@ export default function RoundExportPage() {
           topics: q.topics,
           explanation: q.explanation,
           notes: q.notes,
-          source: q.source
+          source: q.source,
+          media: q.media
         }))
       }
     }, null, 2);

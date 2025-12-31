@@ -26,6 +26,7 @@ export async function initDatabase() {
         language TEXT DEFAULT 'en',
         license TEXT,
         source TEXT,
+        media TEXT,
         tags TEXT[],
         files TEXT[],
         file_paths TEXT[],
@@ -75,6 +76,10 @@ export async function initDatabase() {
     await client.query(`
       ALTER TABLE content_items 
       ADD COLUMN IF NOT EXISTS alternate_answers TEXT[]
+    `);
+    await client.query(`
+      ALTER TABLE content_items 
+      ADD COLUMN IF NOT EXISTS media TEXT
     `);
 
     await client.query(`
@@ -177,6 +182,7 @@ export interface ContentRow {
   language: string | null;
   license: string | null;
   source: string | null;
+  media: string | null;
   tags: string[] | null;
   files: string[] | null;
   file_paths: string[] | null;
@@ -206,6 +212,7 @@ export async function insertContent(metadata: {
   language?: string;
   license?: string;
   source?: string;
+  media?: string;
   tags?: string[];
   files?: string[];
   filePaths?: string[];
@@ -219,8 +226,8 @@ export async function insertContent(metadata: {
       INSERT INTO content_items (
         title, creator, date, topics, question_count, difficulty,
         types, description, answer, options, round, set, explanation, notes, alternate_answers,
-        language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        language, license, source, media, tags, files, file_paths
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *
     `, [
       null, // title - NEVER used for individual questions, kept for backward compatibility only
@@ -241,6 +248,7 @@ export async function insertContent(metadata: {
       metadata.language || 'en',
       metadata.license || null,
       metadata.source || null,
+      metadata.media || null,
       metadata.tags || [],
       metadata.files || [],
       metadata.filePaths || []

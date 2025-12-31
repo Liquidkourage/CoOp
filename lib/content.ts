@@ -22,6 +22,7 @@ export interface ContentMetadata {
   language?: string;
   license?: string;
   source?: string; // URL/web resource that verifies question accuracy
+  media?: string; // URL to audio or visual media (audio clip, image, video)
   tags?: string[];
   files?: string[]; // Media files (images, audio, video)
   relatedContent?: string[];

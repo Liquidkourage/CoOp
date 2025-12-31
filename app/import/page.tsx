@@ -108,6 +108,13 @@ const FIELD_DEFINITIONS = [
     patterns: ['source', 'url', 'reference', 'link']
   },
   {
+    value: 'media',
+    label: 'Media URL',
+    required: false,
+    description: 'URL to audio or visual media (audio clip, image, video)',
+    patterns: ['media', 'audio', 'video', 'image', 'url', 'link', 'file', 'mp3', 'mp4', 'jpg', 'png']
+  },
+  {
     value: 'skip',
     label: 'Skip',
     required: false,
@@ -469,6 +476,9 @@ export default function ImportPage() {
                 break;
               case 'source':
                 metadata.source = strValue;
+                break;
+              case 'media':
+                metadata.media = strValue;
                 break;
             }
           });

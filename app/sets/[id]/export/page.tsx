@@ -15,6 +15,7 @@ interface Question {
   notes: string | null;
   alternateAnswers: string[] | null;
   source: string | null;
+  media: string | null;
 }
 
 interface Round {
@@ -64,7 +65,7 @@ export default function SetExportPage() {
   const downloadAsCSV = () => {
     if (!set) return;
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Explanation', 'Notes', 'Source'].join(','),
+      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Explanation', 'Notes', 'Source', 'Media'].join(','),
       ...set.questions.map(q => [
         `"${(q.question || '').replace(/"/g, '""')}"`,
         `"${(q.answer || '').replace(/"/g, '""')}"`,
@@ -72,7 +73,8 @@ export default function SetExportPage() {
         `"${(q.topics?.join('; ') || '').replace(/"/g, '""')}"`,
         `"${(q.explanation || '').replace(/"/g, '""')}"`,
         `"${(q.notes || '').replace(/"/g, '""')}"`,
-        `"${(q.source || '').replace(/"/g, '""')}"`
+        `"${(q.source || '').replace(/"/g, '""')}"`,
+        `"${(q.media || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
     downloadFile(csv, `${set.name.replace(/[^a-z0-9]/gi, '_')}-export.csv`, 'text/csv');
@@ -92,7 +94,8 @@ export default function SetExportPage() {
           topics: q.topics,
           explanation: q.explanation,
           notes: q.notes,
-          source: q.source
+          source: q.source,
+          media: q.media
         }))
       }
     }, null, 2);

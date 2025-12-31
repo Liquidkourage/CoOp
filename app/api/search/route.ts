@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
           language: row.language || undefined,
           license: row.license || undefined,
           source: row.source || undefined,
+          media: row.media || undefined,
           tags: row.tags || undefined,
           files: row.files || undefined,
         },

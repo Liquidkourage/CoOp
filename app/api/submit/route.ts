@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       language: metadata.language,
       license: metadata.license,
       source: metadata.source,
+      media: metadata.media,
       tags: metadata.tags,
       files: savedFiles,
       filePaths: filePaths

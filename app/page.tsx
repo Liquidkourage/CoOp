@@ -29,6 +29,7 @@ interface ContentItem {
     explanation?: string;
     notes?: string; // Host notes
     source?: string; // URL/web resource that verifies question accuracy
+    media?: string; // URL to audio or visual media (audio clip, image, video)
     tags?: string[];
     files?: string[]; // Media files
   };
@@ -233,7 +234,8 @@ export default function HomePage() {
           `"${(sets.replace(/"/g, '""'))}"`,
           `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.notes || '').replace(/"/g, '""'))}"`,
-          `"${((item.metadata.source || '').replace(/"/g, '""'))}"`
+          `"${((item.metadata.source || '').replace(/"/g, '""'))}"`,
+          `"${((item.metadata.media || '').replace(/"/g, '""'))}"`
         ].join(',');
       })
     ].join('\n');
@@ -267,7 +269,8 @@ export default function HomePage() {
           sets.replace(/\t/g, ' '),
           (item.metadata.explanation || '').replace(/\t/g, ' '),
           (item.metadata.notes || '').replace(/\t/g, ' '),
-          (item.metadata.source || '').replace(/\t/g, ' ')
+          (item.metadata.source || '').replace(/\t/g, ' '),
+          (item.metadata.media || '').replace(/\t/g, ' ')
         ].join('\t');
       })
     ].join('\n');
@@ -1061,7 +1064,8 @@ export default function HomePage() {
           `"${(sets.replace(/"/g, '""'))}"`,
           `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,
           `"${(item.metadata.notes || '').replace(/"/g, '""')}"`,
-          `"${(item.metadata.source || '').replace(/"/g, '""')}"`
+          `"${(item.metadata.source || '').replace(/"/g, '""')}"`,
+          `"${(item.metadata.media || '').replace(/"/g, '""')}"`
         ].join(',');
       })
     ].join('\n');
