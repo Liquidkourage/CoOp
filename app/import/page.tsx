@@ -116,6 +116,13 @@ const FIELD_DEFINITIONS = [
     patterns: ['media', 'audio', 'video', 'image', 'url', 'link', 'file', 'mp3', 'mp4', 'jpg', 'png']
   },
   {
+    value: 'types',
+    label: 'Question Format/Type',
+    required: false,
+    description: 'Question format/type (comma-separated): Multiple Choice, Free Response, Matching, True/False, etc.',
+    patterns: ['format', 'type', 'types', 'question type', 'question format', 'qtype', 'qformat', 'style', 'kind']
+  },
+  {
     value: 'skip',
     label: 'Skip',
     required: false,
