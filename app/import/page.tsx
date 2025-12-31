@@ -487,6 +487,11 @@ export default function ImportPage() {
               case 'media':
                 metadata.media = strValue;
                 break;
+              case 'types':
+                // Comma-separated question types/formats
+                const types = strValue.split(',').map(t => t.trim()).filter(Boolean);
+                metadata.types = types;
+                break;
             }
           });
           
