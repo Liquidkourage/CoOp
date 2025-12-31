@@ -84,8 +84,6 @@ export async function GET(request: NextRequest) {
               answer: row.answer || undefined,
               correctAnswer: row.answer || undefined,
               options: row.options || undefined,
-              points: row.points || undefined,
-              timer: row.timer || undefined,
               round: row.round || undefined, // Legacy field - kept for backward compatibility
               set: row.set || undefined, // Legacy field - kept for backward compatibility
               rounds: rounds.map(r => ({ id: r.id, name: r.name, sequence: r.sequence })),

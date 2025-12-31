@@ -22,8 +22,6 @@ interface ContentItem {
     answer?: string;
     alternateAnswers?: string[]; // Alternative acceptable answers
     options?: string[]; // For multiple-choice questions: array of all answer options
-    points?: number;
-    timer?: number;
     round?: string; // Deprecated - use rounds array instead
     set?: string; // Deprecated - use sets array instead
     rounds?: Array<{ id: number; name: string; sequence: number }>;
@@ -212,7 +210,7 @@ export default function HomePage() {
   const downloadAsCSV = () => {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join(','),
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join(','),
       ...itemsToShow.map(item => {
         // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
         const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
@@ -231,8 +229,6 @@ export default function HomePage() {
           `"${((item.metadata.topics?.join('; ') || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.creator || '').replace(/"/g, '""'))}"`,
           `"${((item.metadata.date || '').replace(/"/g, '""'))}"`,
-          `"${((item.metadata.points?.toString() || '').replace(/"/g, '""'))}"`,
-          `"${((item.metadata.timer?.toString() || '').replace(/"/g, '""'))}"`,
           `"${(rounds.replace(/"/g, '""'))}"`,
           `"${(sets.replace(/"/g, '""'))}"`,
           `"${((item.metadata.explanation || '').replace(/"/g, '""'))}"`,
@@ -248,7 +244,7 @@ export default function HomePage() {
     const itemsToShow = selectedItems.size > 0 ? getSelectedContent() : content;
     // For Excel, we'll use TSV format (can be opened in Excel)
     const tsv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join('\t'),
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'].join('\t'),
       ...itemsToShow.map(item => {
         // Use rounds/sets arrays if available, fallback to legacy round/set TEXT
         const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
@@ -267,8 +263,6 @@ export default function HomePage() {
           (item.metadata.topics?.join('; ') || '').replace(/\t/g, ' '),
           (item.metadata.creator || '').replace(/\t/g, ' '),
           (item.metadata.date || '').replace(/\t/g, ' '),
-          (item.metadata.points?.toString() || '').replace(/\t/g, ' '),
-          (item.metadata.timer?.toString() || '').replace(/\t/g, ' '),
           rounds.replace(/\t/g, ' '),
           sets.replace(/\t/g, ' '),
           (item.metadata.explanation || '').replace(/\t/g, ' '),
@@ -290,8 +284,6 @@ export default function HomePage() {
       topics: item.metadata.topics,
       creator: item.metadata.creator,
       date: item.metadata.date,
-      points: item.metadata.points,
-      timer: item.metadata.timer,
       rounds: item.metadata.rounds?.map(r => ({ id: r.id, name: r.name })) || (item.metadata.round ? [{ name: item.metadata.round }] : []),
       sets: item.metadata.sets?.map(s => ({ id: s.id, name: s.name })) || (item.metadata.set ? [{ name: item.metadata.set }] : []),
       round: item.metadata.round, // Deprecated - kept for backward compatibility
@@ -1039,8 +1031,6 @@ export default function HomePage() {
       topics: item.metadata.topics || [],
       creator: item.metadata.creator || '',
       date: item.metadata.date || '',
-      points: item.metadata.points,
-      timer: item.metadata.timer,
       rounds: item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '',
       sets: item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '',
       round: item.metadata.round, // Deprecated - kept for backward compatibility
@@ -1055,7 +1045,7 @@ export default function HomePage() {
     })), null, 2);
     
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Points', 'Timer', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'],
+      ['Question', 'Answer', 'Alternate Answers', 'Options', 'Topics', 'Creator', 'Date', 'Rounds', 'Sets', 'Explanation', 'Notes', 'Source'],
       ...itemsToShow.map(item => {
         const rounds = item.metadata.rounds?.map(r => r.name).join(' | ') || item.metadata.round || '';
         const sets = item.metadata.sets?.map(s => s.name).join(' | ') || item.metadata.set || '';
@@ -1067,8 +1057,6 @@ export default function HomePage() {
           `"${(item.metadata.topics?.join('; ') || '').replace(/"/g, '""')}"`,
           `"${(item.metadata.creator || '').replace(/"/g, '""')}"`,
           `"${(item.metadata.date || '').replace(/"/g, '""')}"`,
-          `"${(item.metadata.points?.toString() || '').replace(/"/g, '""')}"`,
-          `"${(item.metadata.timer?.toString() || '').replace(/"/g, '""')}"`,
           `"${(rounds.replace(/"/g, '""'))}"`,
           `"${(sets.replace(/"/g, '""'))}"`,
           `"${(item.metadata.explanation || '').replace(/"/g, '""')}"`,

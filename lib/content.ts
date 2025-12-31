@@ -14,8 +14,6 @@ export interface ContentMetadata {
   answer?: string;
   correctAnswer?: string;
   options?: string[]; // For multiple-choice questions: array of all answer options
-  points?: number; // Point value for scoring
-  timer?: number; // Time limit in seconds
   round?: string; // Round name (e.g., "Round 1: History")
   set?: string; // Quiz set/event name (e.g., "December 2025 Quiz Night")
   explanation?: string; // Explanation of the answer

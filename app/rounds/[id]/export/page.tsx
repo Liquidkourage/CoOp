@@ -11,8 +11,6 @@ interface Question {
   question: string | null;
   answer: string | null;
   topics: string[] | null;
-  points: number | null;
-  timer: number | null;
   explanation: string | null;
   notes: string | null;
   alternateAnswers: string[] | null;
@@ -60,14 +58,12 @@ export default function RoundExportPage() {
   const downloadAsCSV = () => {
     if (!round) return;
     const csv = [
-      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Points', 'Timer', 'Explanation', 'Notes', 'Source'].join(','),
+      ['Question', 'Answer', 'Alternate Answers', 'Topics', 'Explanation', 'Notes', 'Source'].join(','),
       ...round.questions.map(q => [
         `"${(q.question || '').replace(/"/g, '""')}"`,
         `"${(q.answer || '').replace(/"/g, '""')}"`,
         `"${(q.alternateAnswers?.join(' | ') || '').replace(/"/g, '""')}"`,
         `"${(q.topics?.join('; ') || '').replace(/"/g, '""')}"`,
-        `"${(q.points?.toString() || '')}"`,
-        `"${(q.timer?.toString() || '')}"`,
         `"${(q.explanation || '').replace(/"/g, '""')}"`,
         `"${(q.notes || '').replace(/"/g, '""')}"`,
         `"${(q.source || '').replace(/"/g, '""')}"`
@@ -87,8 +83,6 @@ export default function RoundExportPage() {
           answer: q.answer,
           alternateAnswers: q.alternateAnswers,
           topics: q.topics,
-          points: q.points,
-          timer: q.timer,
           explanation: q.explanation,
           notes: q.notes,
           source: q.source

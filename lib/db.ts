@@ -46,15 +46,7 @@ export async function initDatabase() {
       ADD COLUMN IF NOT EXISTS options TEXT[]
     `);
 
-    // Add new fields: points, timer, explanation
-    await client.query(`
-      ALTER TABLE content_items 
-      ADD COLUMN IF NOT EXISTS points INTEGER
-    `);
-    await client.query(`
-      ALTER TABLE content_items 
-      ADD COLUMN IF NOT EXISTS timer INTEGER
-    `);
+    // Add new fields: explanation
     // Note: round and set TEXT columns are deprecated - use junction tables instead
     // Keeping them for backward compatibility during migration
     await client.query(`
@@ -177,8 +169,6 @@ export interface ContentRow {
   description: string | null;
   answer: string | null;
   options: string[] | null;
-  points: number | null;
-  timer: number | null;
   round: string | null; // Deprecated - use junction tables. Kept for backward compatibility.
   set: string | null; // Deprecated - use junction tables. Kept for backward compatibility.
   explanation: string | null;
@@ -206,8 +196,6 @@ export async function insertContent(metadata: {
   description?: string; // Deprecated: use 'question' instead. Kept for backward compatibility.
   answer?: string;
   options?: string[];
-  points?: number;
-  timer?: number;
   round?: string; // Deprecated - use roundIds instead. Kept for backward compatibility.
   set?: string; // Deprecated - use setIds instead. Kept for backward compatibility.
   roundIds?: number[]; // New: array of round IDs to link via junction table
@@ -230,9 +218,9 @@ export async function insertContent(metadata: {
     const result = await client.query(`
       INSERT INTO content_items (
         title, creator, date, topics, question_count, difficulty,
-        types, description, answer, options, points, timer, round, set, explanation, notes, alternate_answers,
+        types, description, answer, options, round, set, explanation, notes, alternate_answers,
         language, license, source, tags, files, file_paths
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING *
     `, [
       null, // title - NEVER used for individual questions, kept for backward compatibility only
@@ -245,8 +233,6 @@ export async function insertContent(metadata: {
       metadata.question || metadata.description || null, // Map 'question' to 'description' column
       metadata.answer || null,
       metadata.options || [],
-      metadata.points || null,
-      metadata.timer || null,
       metadata.round || null, // Deprecated - kept for backward compatibility
       metadata.set || null, // Deprecated - kept for backward compatibility
       metadata.explanation || null,

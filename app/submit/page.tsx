@@ -30,8 +30,6 @@ export default function SubmitPage() {
     answer: '',
     options: '', // Incorrect options (distractors) - semicolon-delimited
     alternateAnswers: '',
-    points: '',
-    timer: '',
     round: '',
     set: '',
     explanation: '',
@@ -123,8 +121,6 @@ export default function SubmitPage() {
         answer: formData.answer.trim() || undefined,
         options: formData.options.split(';').map(o => o.trim()).filter(Boolean), // Parse semicolon-delimited incorrect options
         alternateAnswers: formData.alternateAnswers.split(',').map(a => a.trim()).filter(Boolean),
-        points: formData.points ? parseInt(formData.points) : undefined,
-        timer: formData.timer ? parseInt(formData.timer) : undefined,
         round: formData.round.trim() || undefined,
         set: formData.set.trim() || undefined,
         explanation: formData.explanation.trim() || undefined,
@@ -392,44 +388,6 @@ export default function SubmitPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                  Points
-                </label>
-                <input
-                  type="number"
-                  value={formData.points}
-                  onChange={(e) => setFormData({ ...formData, points: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="e.g., 10"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                  Time Limit (seconds)
-                </label>
-                <input
-                  type="number"
-                  value={formData.timer}
-                  onChange={(e) => setFormData({ ...formData, timer: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="e.g., 30"
-                />
-              </div>
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div>

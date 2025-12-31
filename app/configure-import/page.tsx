@@ -76,18 +76,6 @@ const TARGET_FIELDS = [
     description: 'Difficulty level: beginner, easy, medium, hard, or expert.'
   },
   { 
-    value: 'points', 
-    label: 'Points', 
-    required: false,
-    description: 'Point value for the question (numeric, e.g., 10, 25, 50).'
-  },
-  { 
-    value: 'timer', 
-    label: 'Time Limit (seconds)', 
-    required: false,
-    description: 'Time limit in seconds for answering the question (numeric, e.g., 30, 60).'
-  },
-  { 
     value: 'round', 
     label: 'Round', 
     required: false,

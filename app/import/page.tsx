@@ -59,20 +59,6 @@ const FIELD_DEFINITIONS = [
     patterns: ['topic', 'category', 'subject', 'tags', 'theme', 'genre']
   },
   {
-    value: 'points',
-    label: 'Points',
-    required: false,
-    description: 'Point value (numeric)',
-    patterns: ['points', 'score', 'value', 'weight', 'pts']
-  },
-  {
-    value: 'timer',
-    label: 'Timer (seconds)',
-    required: false,
-    description: 'Time limit in seconds',
-    patterns: ['timer', 'time', 'duration', 'seconds', 'sec']
-  },
-  {
     value: 'options',
     label: 'Incorrect Options',
     required: false,
@@ -158,10 +144,6 @@ function detectColumnMappings(headers: string[]): ColumnMapping[] {
       // Check for multiple choice options (A, B, C, D or Option 1, Option 2)
       if (/^[a-d]$/i.test(header.trim()) || /option\s*\d+/i.test(headerLower)) {
         bestMatch = { field: 'options', confidence: 80 };
-      }
-      // Check for numeric columns that might be points
-      else if (/^\d+$/.test(header.trim())) {
-        bestMatch = { field: 'points', confidence: 60 };
       }
     }
     
@@ -464,14 +446,6 @@ export default function ImportPage() {
               case 'topics':
                 const topics = strValue.split(',').map(t => t.trim()).filter(Boolean);
                 metadata.topics = topics;
-                break;
-              case 'points':
-                const points = parseInt(strValue);
-                if (!isNaN(points)) metadata.points = points;
-                break;
-              case 'timer':
-                const timer = parseInt(strValue);
-                if (!isNaN(timer)) metadata.timer = timer;
                 break;
               case 'options':
                 // Semicolon-delimited incorrect options

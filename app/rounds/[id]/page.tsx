@@ -11,8 +11,6 @@ interface Question {
   id: number;
   question: string | null;
   answer: string | null;
-  points: number | null;
-  timer: number | null;
   explanation: string | null;
   notes: string | null;
   alternateAnswers: string[] | null;
@@ -325,16 +323,6 @@ export default function RoundDetailPage() {
                   </div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
-                      {question.points !== null && (
-                        <span style={{ background: '#e3f2fd', padding: '4px 8px', borderRadius: '4px' }}>
-                          {question.points} pts
-                        </span>
-                      )}
-                      {question.timer !== null && (
-                        <span style={{ background: '#fff3e0', padding: '4px 8px', borderRadius: '4px' }}>
-                          {question.timer}s
-                        </span>
-                      )}
                       {question.difficulty && (
                         <span style={{ background: '#f3e5f5', padding: '4px 8px', borderRadius: '4px' }}>
                           {question.difficulty}
