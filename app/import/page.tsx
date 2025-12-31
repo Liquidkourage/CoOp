@@ -165,7 +165,8 @@ function detectColumnMappings(headers: string[]): ColumnMapping[] {
       }
     }
     
-    if (bestMatch && !usedFields.has(bestMatch.field)) {
+    // Only use match if confidence is reasonable (avoid false positives)
+    if (bestMatch && bestMatch.confidence > 30 && !usedFields.has(bestMatch.field)) {
       mappings.push({
         sourceColumn: header,
         targetField: bestMatch.field,
