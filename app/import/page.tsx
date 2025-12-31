@@ -44,6 +44,13 @@ const FIELD_DEFINITIONS = [
     description: 'The correct answer to the question',
     patterns: ['answer', 'a', 'correct', 'solution', 'key', 'response']
   },
+  {
+    value: 'alternateAnswers',
+    label: 'Alternative Answers',
+    required: false,
+    description: 'Acceptable variations of the correct answer (comma-separated)',
+    patterns: ['alternate', 'alternative', 'variants', 'answervariants', 'answer variants', 'alt answer', 'alt answers', 'acceptable', 'variations']
+  },
   // Creator is always auto-filled from logged-in user, not mapped from columns
   {
     value: 'topics',
