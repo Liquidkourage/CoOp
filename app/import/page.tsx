@@ -249,17 +249,13 @@ export default function ImportPage() {
       
       // Auto-detect mappings
       const detectedMappings = detectColumnMappings(fileHeaders);
-      setMappings(detectedMappings);
       
-      // Ensure creator is mapped (use current user if not detected)
-      const creatorMapping = detectedMappings.find(m => m.targetField === 'creator');
-      if (!creatorMapping || creatorMapping.confidence < 50) {
-        const skipMapping = detectedMappings.find(m => m.targetField === 'skip');
-        if (skipMapping) {
-          skipMapping.targetField = 'creator';
-          skipMapping.confidence = 100;
-        }
-      }
+      // Remove any creator mappings - creator is always auto-filled from logged-in user
+      const cleanedMappings = detectedMappings.map(m => 
+        m.targetField === 'creator' ? { ...m, targetField: 'skip', confidence: 0 } : m
+      );
+      
+      setMappings(cleanedMappings);
       
       // Create preview rows (first 5)
       const preview = parsedData.slice(0, 5).map((row, idx) => {
@@ -447,9 +443,7 @@ export default function ImportPage() {
               case 'answer':
                 metadata.answer = strValue;
                 break;
-              case 'creator':
-                metadata.creator = strValue;
-                break;
+              // Creator is always set from logged-in user, never mapped from columns
               case 'topics':
                 const topics = strValue.split(',').map(t => t.trim()).filter(Boolean);
                 metadata.topics = topics;
