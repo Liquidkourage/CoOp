@@ -49,7 +49,7 @@ const FIELD_DEFINITIONS = [
     label: 'Creator',
     required: true,
     description: 'The author or creator of the question',
-    patterns: ['creator', 'author', 'created by', 'writer', 'by', 'source']
+    patterns: ['creator', 'author', 'created by', 'writer']
   },
   {
     value: 'topics',
@@ -311,14 +311,85 @@ export default function ImportPage() {
   }, [currentUser]);
 
   const updateMapping = (sourceColumn: string, targetField: string) => {
-    setMappings(prev => prev.map(m => 
-      m.sourceColumn === sourceColumn ? { ...m, targetField, confidence: targetField === 'skip' ? 0 : 100 } : m
-    ));
+    setMappings(prev => {
+      const updated = prev.map(m => 
+        m.sourceColumn === sourceColumn ? { ...m, targetField, confidence: targetField === 'skip' ? 0 : 100 } : m
+      );
+      
+      // Update preview with new mappings without re-running detection
+      if (file && previewRows.length > 0) {
+        const fileName = file.name.toLowerCase();
+        const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+        
+        // Re-parse file to get fresh data
+        file.arrayBuffer().then(buffer => {
+          let parsedData: any[] = [];
+          
+          if (isExcel) {
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            const fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
+            const rows = (jsonData.slice(1) as any[]).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== '')) as any[][];
+            
+            parsedData = rows.map((row: any[], idx: number) => {
+              const obj: Record<string, any> = {};
+              fileHeaders.forEach((header, colIdx) => {
+                obj[header] = row[colIdx] !== undefined ? row[colIdx] : '';
+              });
+              return obj;
+            });
+          } else {
+            file.text().then(text => {
+              const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+              parsedData = parsed.data as any[];
+              
+              updatePreview(parsedData, updated);
+            });
+            return;
+          }
+          
+          updatePreview(parsedData, updated);
+        });
+      }
+      
+      return updated;
+    });
+  };
+  
+  const updatePreview = (parsedData: any[], currentMappings: ColumnMapping[]) => {
+    const preview = parsedData.slice(0, 5).map((row, idx) => {
+      const mapped: Record<string, any> = {};
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      
+      currentMappings.forEach(mapping => {
+        if (mapping.targetField === 'skip') return;
+        
+        const value = row[mapping.sourceColumn];
+        if (value !== undefined && value !== null && String(value).trim()) {
+          mapped[mapping.targetField] = value;
+        }
+      });
+      
+      // Validate required fields
+      if (!mapped.question && !mapped.description) {
+        errors.push('Missing required field: Question');
+      }
+      if (!mapped.creator) {
+        warnings.push('Missing creator - will use logged-in user');
+      }
+      
+      return {
+        id: idx + 1,
+        data: row,
+        mapped,
+        errors,
+        warnings
+      };
+    });
     
-    // Update preview with new mappings
-    if (file) {
-      handleFileSelect(file);
-    }
+    setPreviewRows(preview);
   };
 
   const processImport = async () => {
