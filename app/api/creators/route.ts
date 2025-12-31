@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { initDatabase, pool } from '@/lib/db';
 import { loadAllContent, getAllCreators as getAllFileCreators } from '@/lib/content';
 
+// Force dynamic rendering and prevent caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     let creators: string[] = [];
