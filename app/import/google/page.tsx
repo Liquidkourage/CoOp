@@ -177,7 +177,7 @@ function detectColumnMappings(headers: string[]): ColumnMapping[] {
   return mappings;
 }
 
-export default function GoogleDocsImportPage() {
+function GoogleDocsImportPageContent() {
   const { currentUser } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -747,5 +747,20 @@ export default function GoogleDocsImportPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GoogleDocsImportPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+        <Navigation />
+        <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    }>
+      <GoogleDocsImportPageContent />
+    </Suspense>
   );
 }
