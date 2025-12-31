@@ -226,9 +226,9 @@ export default function ImportPage() {
         }
         
         fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
-        const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== ''));
+        const rows = jsonData.slice(1).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== ''));
         
-        parsedData = rows.map((row, idx) => {
+        parsedData = rows.map((row: any[], idx: number) => {
           const obj: Record<string, any> = {};
           fileHeaders.forEach((header, colIdx) => {
             obj[header] = row[colIdx] !== undefined ? row[colIdx] : '';
