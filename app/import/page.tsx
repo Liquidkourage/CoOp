@@ -44,13 +44,7 @@ const FIELD_DEFINITIONS = [
     description: 'The correct answer to the question',
     patterns: ['answer', 'a', 'correct', 'solution', 'key', 'response']
   },
-  {
-    value: 'creator',
-    label: 'Creator',
-    required: true,
-    description: 'The author or creator of the question',
-    patterns: ['creator', 'author', 'created by', 'writer']
-  },
+  // Creator is always auto-filled from logged-in user, not mapped from columns
   {
     value: 'topics',
     label: 'Topics',
