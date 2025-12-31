@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllCreators, initDatabase, pool } from '@/lib/db';
+import { initDatabase, pool } from '@/lib/db';
 import { loadAllContent, getAllCreators as getAllFileCreators } from '@/lib/content';
 
 export async function GET() {
@@ -9,7 +9,7 @@ export async function GET() {
       await initDatabase();
       const client = await pool.connect();
       try {
-        // Use the same query that works in debug-data
+        // Use the exact same query that works in debug-data
         const result = await client.query(`
           SELECT DISTINCT creator
           FROM content_items
@@ -19,19 +19,24 @@ export async function GET() {
           ORDER BY creator
         `);
         
+        console.log(`[Creators API] Query returned ${result.rows.length} rows:`, JSON.stringify(result.rows, null, 2));
+        
         creators = result.rows
           .map(row => row.creator)
           .filter((creator): creator is string => 
             creator !== null && creator !== undefined && typeof creator === 'string' && creator.trim() !== ''
           );
         
-        console.log(`[Creators API] Found ${creators.length} creators:`, creators);
+        console.log(`[Creators API] After filtering, found ${creators.length} creators:`, creators);
+      } catch (queryError) {
+        console.error('[Creators API] Query error:', queryError);
+        throw queryError;
       } finally {
         client.release();
       }
     } catch (dbError) {
-      console.warn('Database not available, using file system:', dbError);
-      console.error('Database error details:', dbError);
+      console.warn('[Creators API] Database not available, using file system:', dbError);
+      console.error('[Creators API] Database error details:', dbError);
       const content = loadAllContent();
       creators = getAllFileCreators(content);
       console.log(`[Creators API] Found ${creators.length} creators from file system:`, creators);
@@ -43,9 +48,17 @@ export async function GET() {
       creators
     };
     console.log('[Creators API] Returning response:', JSON.stringify(response, null, 2));
-    return NextResponse.json(response);
+    
+    // Prevent caching
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
-    console.error('Error loading creators:', error);
+    console.error('[Creators API] Error loading creators:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to load creators', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
