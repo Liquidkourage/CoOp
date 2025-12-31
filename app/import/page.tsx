@@ -444,6 +444,11 @@ export default function ImportPage() {
               case 'answer':
                 metadata.answer = strValue;
                 break;
+              case 'alternateAnswers':
+                // Comma-separated alternative answers
+                const alternateAnswers = strValue.split(',').map(a => a.trim()).filter(Boolean);
+                metadata.alternateAnswers = alternateAnswers;
+                break;
               // Creator is always set from logged-in user, never mapped from columns
               case 'topics':
                 const topics = strValue.split(',').map(t => t.trim()).filter(Boolean);
