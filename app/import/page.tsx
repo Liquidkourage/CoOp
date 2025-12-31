@@ -369,9 +369,7 @@ export default function ImportPage() {
       if (!mapped.question && !mapped.description) {
         errors.push('Missing required field: Question');
       }
-      if (!mapped.creator) {
-        warnings.push('Missing creator - will use logged-in user');
-      }
+      // Creator is always set from logged-in user, no warning needed
       
       return {
         id: idx + 1,
