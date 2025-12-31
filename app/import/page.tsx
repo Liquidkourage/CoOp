@@ -285,7 +285,6 @@ export default function ImportPage() {
           errors.push('Missing required field: Question');
         }
         if (!mapped.creator) {
-          warnings.push('Missing creator - will use logged-in user');
         }
         
         return {
