@@ -226,7 +226,7 @@ export default function ImportPage() {
         }
         
         fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
-        const rows = jsonData.slice(1).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== ''));
+        const rows = (jsonData.slice(1) as any[]).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== '')) as any[][];
         
         parsedData = rows.map((row: any[], idx: number) => {
           const obj: Record<string, any> = {};
@@ -339,7 +339,7 @@ export default function ImportPage() {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
         const fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
-        const rows = jsonData.slice(1).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== ''));
+        const rows = (jsonData.slice(1) as any[]).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== '')) as any[][];
         
         parsedData = rows.map((row: any[]) => {
           const obj: Record<string, any> = {};
