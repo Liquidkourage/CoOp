@@ -1,1239 +1,799 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useCallback } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import UserSelector from '../components/UserSelector';
 import Navigation from '../components/Navigation';
 
-interface ImportResult {
-  success: boolean;
-  imported: number;
+interface ColumnMapping {
+  sourceColumn: string;
+  targetField: string;
+  confidence: number; // 0-100, how confident we are in this mapping
+}
+
+interface PreviewRow {
+  id: number;
+  data: Record<string, any>;
+  mapped: Record<string, any>;
   errors: string[];
-  message?: string;
-  debug?: any;
+  warnings: string[];
+}
+
+interface ImportProgress {
+  current: number;
+  total: number;
+  imported: number;
+  errors: number;
+  warnings: number;
+}
+
+// Field definitions with detection patterns
+const FIELD_DEFINITIONS = [
+  {
+    value: 'question',
+    label: 'Question',
+    required: true,
+    description: 'The actual trivia question text',
+    patterns: ['question', 'q', 'text', 'prompt', 'query', 'item', 'content']
+  },
+  {
+    value: 'answer',
+    label: 'Answer',
+    required: false,
+    description: 'The correct answer to the question',
+    patterns: ['answer', 'a', 'correct', 'solution', 'key', 'response']
+  },
+  {
+    value: 'creator',
+    label: 'Creator',
+    required: true,
+    description: 'The author or creator of the question',
+    patterns: ['creator', 'author', 'created by', 'writer', 'by', 'source']
+  },
+  {
+    value: 'topics',
+    label: 'Topics',
+    required: false,
+    description: 'Categories or subjects (comma-separated)',
+    patterns: ['topic', 'category', 'subject', 'tags', 'theme', 'genre']
+  },
+  {
+    value: 'points',
+    label: 'Points',
+    required: false,
+    description: 'Point value (numeric)',
+    patterns: ['points', 'score', 'value', 'weight', 'pts']
+  },
+  {
+    value: 'timer',
+    label: 'Timer (seconds)',
+    required: false,
+    description: 'Time limit in seconds',
+    patterns: ['timer', 'time', 'duration', 'seconds', 'sec']
+  },
+  {
+    value: 'options',
+    label: 'Incorrect Options',
+    required: false,
+    description: 'Multiple-choice distractors (semicolon-delimited)',
+    patterns: ['options', 'choices', 'alternatives', 'distractors', 'incorrect']
+  },
+  {
+    value: 'date',
+    label: 'Date',
+    required: false,
+    description: 'Date (YYYY-MM-DD format)',
+    patterns: ['date', 'created', 'published', 'timestamp']
+  },
+  {
+    value: 'round',
+    label: 'Round',
+    required: false,
+    description: 'Round name',
+    patterns: ['round', 'rd', 'round name']
+  },
+  {
+    value: 'set',
+    label: 'Set/Event',
+    required: false,
+    description: 'Quiz set or event name',
+    patterns: ['set', 'event', 'quiz', 'game']
+  },
+  {
+    value: 'explanation',
+    label: 'Explanation',
+    required: false,
+    description: 'Explanation or rationale',
+    patterns: ['explanation', 'rationale', 'why', 'reason']
+  },
+  {
+    value: 'notes',
+    label: 'Host Notes',
+    required: false,
+    description: 'Internal notes for hosts',
+    patterns: ['notes', 'note', 'host notes', 'internal']
+  },
+  {
+    value: 'source',
+    label: 'Source',
+    required: false,
+    description: 'Source URL or reference',
+    patterns: ['source', 'url', 'reference', 'link']
+  },
+  {
+    value: 'skip',
+    label: 'Skip',
+    required: false,
+    description: 'Ignore this column',
+    patterns: []
+  }
+];
+
+// Auto-detect column mappings based on header names
+function detectColumnMappings(headers: string[]): ColumnMapping[] {
+  const mappings: ColumnMapping[] = [];
+  const usedFields = new Set<string>();
+  
+  headers.forEach(header => {
+    const headerLower = header.toLowerCase().trim();
+    let bestMatch: { field: string; confidence: number } | null = null;
+    
+    // Check each field definition for matches
+    FIELD_DEFINITIONS.forEach(field => {
+      if (field.value === 'skip') return;
+      
+      field.patterns.forEach(pattern => {
+        if (headerLower.includes(pattern)) {
+          const confidence = pattern.length / headerLower.length * 100;
+          if (!bestMatch || confidence > bestMatch.confidence) {
+            bestMatch = { field: field.value, confidence: Math.min(confidence, 95) };
+          }
+        }
+      });
+    });
+    
+    // Special handling for common patterns
+    if (!bestMatch) {
+      // Check for multiple choice options (A, B, C, D or Option 1, Option 2)
+      if (/^[a-d]$/i.test(header.trim()) || /option\s*\d+/i.test(headerLower)) {
+        bestMatch = { field: 'options', confidence: 80 };
+      }
+      // Check for numeric columns that might be points
+      else if (/^\d+$/.test(header.trim())) {
+        bestMatch = { field: 'points', confidence: 60 };
+      }
+    }
+    
+    if (bestMatch && !usedFields.has(bestMatch.field)) {
+      mappings.push({
+        sourceColumn: header,
+        targetField: bestMatch.field,
+        confidence: bestMatch.confidence
+      });
+      if (bestMatch.field !== 'options' && bestMatch.field !== 'topics') {
+        usedFields.add(bestMatch.field);
+      }
+    } else {
+      mappings.push({
+        sourceColumn: header,
+        targetField: 'skip',
+        confidence: 0
+      });
+    }
+  });
+  
+  return mappings;
 }
 
 export default function ImportPage() {
-  const router = useRouter();
   const { currentUser } = useUser();
   const [file, setFile] = useState<File | null>(null);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [mappings, setMappings] = useState<ColumnMapping[]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [preview, setPreview] = useState<any[]>([]);
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const [showDebug, setShowDebug] = useState(false);
-  const [trivnowConfig, setTrivnowConfig] = useState<any>(null);
-  const [excelConfig, setExcelConfig] = useState<any>(null);
-  const [savedConfigs, setSavedConfigs] = useState<any[]>([]);
-  const [selectedConfig, setSelectedConfig] = useState<string>('');
-  const [isTrivnowFormat, setIsTrivnowFormat] = useState(false);
-  const [isExcelFormat, setIsExcelFormat] = useState(false);
-  const [fileType, setFileType] = useState<'csv' | 'excel' | null>(null);
-  const [defaultCreator, setDefaultCreator] = useState<string>('');
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [results, setResults] = useState<{ imported: number; errors: string[]; warnings: string[] } | null>(null);
 
-  // Load all saved configurations for current user
-  useEffect(() => {
-    if (currentUser) {
-      const configs: any[] = [];
-      // Load legacy configs
-      const savedTrivnowConfig = localStorage.getItem(`trivnow-config-${currentUser}`);
-      const savedExcelConfig = localStorage.getItem(`excel-config-${currentUser}`);
+  const handleFileSelect = useCallback(async (selectedFile: File) => {
+    if (!currentUser) {
+      alert('Please log in first.');
+      return;
+    }
+
+    setFile(selectedFile);
+    setPreviewRows([]);
+    setResults(null);
+    setProgress(null);
+
+    const fileName = selectedFile.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isCsv = fileName.endsWith('.csv');
+
+    try {
+      let parsedData: any[] = [];
+      let fileHeaders: string[] = [];
+
+      if (isExcel) {
+        const workbook = XLSX.read(await selectedFile.arrayBuffer(), { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        
+        if (jsonData.length === 0) {
+          alert('Excel file appears to be empty.');
+          return;
+        }
+        
+        fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
+        const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== ''));
+        
+        parsedData = rows.map((row, idx) => {
+          const obj: Record<string, any> = {};
+          fileHeaders.forEach((header, colIdx) => {
+            obj[header] = row[colIdx] !== undefined ? row[colIdx] : '';
+          });
+          return obj;
+        });
+      } else if (isCsv) {
+        const text = await selectedFile.text();
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        
+        if (parsed.errors.length > 0) {
+          console.warn('CSV parsing errors:', parsed.errors);
+        }
+        
+        fileHeaders = parsed.meta.fields || [];
+        parsedData = parsed.data as any[];
+      } else {
+        alert('Please select a CSV or Excel file.');
+        return;
+      }
+
+      if (fileHeaders.length === 0) {
+        alert('Could not detect column headers in file.');
+        return;
+      }
+
+      setHeaders(fileHeaders);
       
-      if (savedTrivnowConfig) {
-        try {
-          const config = JSON.parse(savedTrivnowConfig);
-          configs.push({ ...config, formatName: 'TrivNow CSV', fileType: 'csv', isLegacy: true });
-        } catch (e) {
-          console.error('Failed to parse TrivNow config:', e);
+      // Auto-detect mappings
+      const detectedMappings = detectColumnMappings(fileHeaders);
+      setMappings(detectedMappings);
+      
+      // Ensure creator is mapped (use current user if not detected)
+      const creatorMapping = detectedMappings.find(m => m.targetField === 'creator');
+      if (!creatorMapping || creatorMapping.confidence < 50) {
+        const skipMapping = detectedMappings.find(m => m.targetField === 'skip');
+        if (skipMapping) {
+          skipMapping.targetField = 'creator';
+          skipMapping.confidence = 100;
         }
       }
       
-      if (savedExcelConfig) {
-        try {
-          const config = JSON.parse(savedExcelConfig);
-          configs.push({ ...config, formatName: 'Excel Format', fileType: 'excel', isLegacy: true });
-        } catch (e) {
-          console.error('Failed to parse Excel config:', e);
-        }
-      }
-      
-      // Load new flexible configs
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(`import-config-${currentUser}-`)) {
-          try {
-            const config = JSON.parse(localStorage.getItem(key) || '{}');
-            if (config.username === currentUser) {
-              configs.push(config);
-            }
-          } catch (e) {
-            console.error('Error loading config:', e);
+      // Create preview rows (first 5)
+      const preview = parsedData.slice(0, 5).map((row, idx) => {
+        const mapped: Record<string, any> = {};
+        const errors: string[] = [];
+        const warnings: string[] = [];
+        
+        detectedMappings.forEach(mapping => {
+          if (mapping.targetField === 'skip') return;
+          
+          const value = row[mapping.sourceColumn];
+          if (value !== undefined && value !== null && String(value).trim()) {
+            mapped[mapping.targetField] = value;
           }
+        });
+        
+        // Validate required fields
+        if (!mapped.question && !mapped.description) {
+          errors.push('Missing required field: Question');
         }
-      }
+        if (!mapped.creator) {
+          warnings.push('Missing creator - will use logged-in user');
+        }
+        
+        return {
+          id: idx + 1,
+          data: row,
+          mapped,
+          errors,
+          warnings
+        };
+      });
       
-      setSavedConfigs(configs);
+      setPreviewRows(preview);
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      alert('Error parsing file. Please check the file format.');
     }
   }, [currentUser]);
 
-  // Check which formats are configured for current user
-  const hasTrivnowConfig = currentUser ? !!localStorage.getItem(`trivnow-config-${currentUser}`) : false;
-  const hasExcelConfig = currentUser ? !!localStorage.getItem(`excel-config-${currentUser}`) : false;
-  const hasAnyConfig = savedConfigs.length > 0;
-
-  // Group multiple-choice questions with their answer options
-  const groupMultipleChoiceQuestions = (rawRows: any[], headers: string[]): any[] => {
-    const groupedRows: any[] = [];
-    const processedIndices = new Set<number>();
+  const updateMapping = (sourceColumn: string, targetField: string) => {
+    setMappings(prev => prev.map(m => 
+      m.sourceColumn === sourceColumn ? { ...m, targetField, confidence: targetField === 'skip' ? 0 : 100 } : m
+    ));
     
-    // Find columns that might indicate question type or answer options
-    const typeColumn = headers.find(h => 
-      h.toLowerCase().includes('type') && 
-      !h.toLowerCase().includes('question')
-    );
-    const questionColumn = headers.find(h => 
-      h.toLowerCase().includes('question')
-    );
-    const answerColumn = headers.find(h => 
-      (h.toLowerCase().includes('answer') || 
-       h.toLowerCase().includes('option')) &&
-      !h.toLowerCase().includes('correct')
-    );
-    
-    for (let i = 0; i < rawRows.length; i++) {
-      if (processedIndices.has(i)) continue;
-      
-      const row = { ...rawRows[i] }; // Copy row
-      const rowType = typeColumn ? String(row[typeColumn] || '').toLowerCase() : '';
-      const hasQuestion = questionColumn && row[questionColumn] && String(row[questionColumn]).trim();
-      
-      // Check if this is a multiple-choice question
-      const isMultipleChoice = rowType.includes('multiple') || rowType.includes('choice') || 
-                                rowType.includes('mc') || rowType === 'multiple choice';
-      
-      if (isMultipleChoice && hasQuestion) {
-        // Collect answer options - start with the question row itself
-        const answerOptions: string[] = [];
-        let correctAnswerText = '';
-        
-        // Find the X column (marks correct answers) and Answer column (contains answer text)
-        const xColumn = headers.find(h => 
-          h.toLowerCase() === 'x' || 
-          h.toLowerCase().startsWith('x ') ||
-          h.toLowerCase() === 'correct'
-        );
-        const answerColumn = headers.find(h => 
-          (h.toLowerCase().includes('answer') && !h.toLowerCase().includes('x')) ||
-          h.toLowerCase().includes('option')
-        );
-        
-        // Check the question row for answer options
-        if (answerColumn) {
-          const answerVal = String(row[answerColumn] || '').trim();
-          if (answerVal && answerVal.length > 0 && answerVal.length < 200) {
-            // Check if this row's X column marks it as correct
-            const isCorrect = xColumn && (
-              String(row[xColumn] || '').toLowerCase().includes('x') ||
-              String(row[xColumn] || '').includes('✓') ||
-              String(row[xColumn] || '').includes('√')
-            );
-            
-            answerOptions.push(answerVal);
-            if (isCorrect && !correctAnswerText) {
-              correctAnswerText = answerVal;
-            }
-          }
-        }
-        
-        // Now collect answer options from subsequent rows
-        let j = i + 1;
-        
-        // Look ahead for answer options (rows with answer column filled but no question)
-        while (j < rawRows.length) {
-          const nextRow = rawRows[j];
-          const nextHasQuestion = questionColumn && nextRow[questionColumn] && String(nextRow[questionColumn]).trim();
-          
-          // Stop if we hit another question row
-          if (nextHasQuestion) {
-            break;
-          }
-          
-          // Check if this row has answer options
-          // Check ALL columns for answer options (they might be in different columns)
-          let foundAnswer = false;
-          let correctAnswerText = '';
-          
-          // Collect all potential answer values from this row
-          // Check if there's an Answer column and X column structure
-          const potentialAnswers: Array<{text: string, isCorrect: boolean, column: string}> = [];
-          
-          // First, check if there's a separate Answer column (and X column for marking)
-          if (answerColumn) {
-            const answerVal = String(nextRow[answerColumn] || '').trim();
-            if (answerVal && answerVal.length > 0 && answerVal.length < 200) {
-              // Check if the X column marks this as correct
-              const isCorrect = !!(xColumn && (
-                String(nextRow[xColumn] || '').toLowerCase().includes('x') ||
-                String(nextRow[xColumn] || '').includes('✓') ||
-                String(nextRow[xColumn] || '').includes('√')
-              ));
-              
-              potentialAnswers.push({
-                text: answerVal,
-                isCorrect: isCorrect,
-                column: answerColumn
-              });
-            }
-          }
-          
-          // If no answers found in Answer column, check other columns
-          if (potentialAnswers.length === 0) {
-            for (const header of headers) {
-              if (header === questionColumn) continue;
-              
-              const val = String(nextRow[header] || '').trim();
-              if (!val || val.length === 0) continue;
-              
-              // Skip obvious non-answer columns
-              const headerLower = header.toLowerCase();
-              if (headerLower.includes('type') || 
-                  headerLower.includes('date') || 
-                  headerLower.includes('creator') ||
-                  headerLower.includes('category') ||
-                  headerLower.includes('topic') ||
-                  headerLower.includes('source') ||
-                  headerLower.includes('points') ||
-                  headerLower.includes('script') ||
-                  headerLower.includes('label') ||
-                  headerLower.includes('display') ||
-                  headerLower.includes('clues') ||
-                  headerLower.includes('media')) {
-                continue;
-              }
-              
-              // Skip if it's clearly not an answer (pure numbers, dates, etc.)
-              if (/^\d+$/.test(val) || /^\d{4}-\d{2}-\d{2}/.test(val)) {
-                continue;
-              }
-              
-              // Skip if it contains question-related keywords
-              if (val.toLowerCase().includes('multiple') || 
-                  val.toLowerCase().includes('choice') ||
-                  val.toLowerCase().includes('question')) {
-                continue;
-              }
-              
-              // If we get here, it might be an answer option
-              const isCorrect = val.toLowerCase().includes('x') || 
-                               val.includes('✓') || 
-                               val.includes('√');
-              const cleanAnswer = val.replace(/[x✓√]/gi, '').trim();
-              
-              if (cleanAnswer && cleanAnswer.length > 0 && cleanAnswer.length < 200) {
-                potentialAnswers.push({
-                  text: cleanAnswer,
-                  isCorrect: isCorrect,
-                  column: header
-                });
-              }
-            }
-          }
-          
-          // If we found potential answers, add them all
-          if (potentialAnswers.length > 0) {
-            // Add all answers to the options list
-            potentialAnswers.forEach(potential => {
-              answerOptions.push(potential.text);
-              if (potential.isCorrect && !correctAnswerText) {
-                correctAnswerText = potential.text;
-              }
-            });
-            foundAnswer = true;
-          }
-          
-          // Set the correct answer if we found one
-          if (correctAnswerText && !row.answer) {
-            row.answer = correctAnswerText;
-          }
-          
-          if (foundAnswer) {
-            processedIndices.add(j);
-            j++;
-          } else {
-            // No more answer options found, stop looking
-            break;
-          }
-        }
-        
-        // Store answer options in options array (structured data)
-        if (answerOptions.length > 0) {
-          // Store options as a structured array
-          row.options = answerOptions;
-          
-          // Keep question text clean (don't append options)
-          // The options will be stored separately in the options field
-          
-          // Set the correct answer if we found one, otherwise default to first
-          if (!row.answer) {
-            row.answer = correctAnswerText || answerOptions[0];
-          }
-        }
-      }
-      
-      groupedRows.push(row);
+    // Update preview with new mappings
+    if (file) {
+      handleFileSelect(file);
     }
-    
-    return groupedRows;
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentUser) {
-      alert('Please select or create a user first.');
-      e.target.value = '';
-      return;
-    }
-
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      setResult(null);
-      setPreview([]);
-      
-      // Detect file type
-      const fileName = selectedFile.name.toLowerCase();
+  const processImport = async () => {
+    if (!file || !currentUser) return;
+    
+    setImporting(true);
+    setProgress({ current: 0, total: 0, imported: 0, errors: 0, warnings: 0 });
+    
+    try {
+      // Re-parse file
+      const fileName = file.name.toLowerCase();
       const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
-      const isCsv = fileName.endsWith('.csv');
-      setFileType(isExcel ? 'excel' : isCsv ? 'csv' : null);
       
-      // Check for configurations (user-specific)
-      const savedTrivnowConfig = currentUser ? localStorage.getItem(`trivnow-config-${currentUser}`) : null;
-      const savedExcelConfig = currentUser ? localStorage.getItem(`excel-config-${currentUser}`) : null;
-      
-      let trivnowConfig = null;
-      let excelConfig = null;
-      let matchedConfig = null;
-      
-      // Try to find a matching saved configuration
-      if (currentUser && savedConfigs.length > 0) {
-        const fileHeaders: string[] = [];
-        
-        // We'll populate fileHeaders after parsing, but check configs that match file type
-        const matchingConfigs = savedConfigs.filter(config => {
-          if (isExcel && config.fileType === 'excel') return true;
-          if (isCsv && config.fileType === 'csv') return true;
-          return false;
-        });
-        
-        // If a config is selected, use it
-        if (selectedConfig) {
-          matchedConfig = matchingConfigs.find(c => c.formatName === selectedConfig);
-        }
-      }
-      
-      if (savedTrivnowConfig) {
-        try {
-          trivnowConfig = JSON.parse(savedTrivnowConfig);
-          setTrivnowConfig(trivnowConfig);
-        } catch (e) {
-          console.error('Failed to parse TrivNow config:', e);
-        }
-      }
-      
-      if (savedExcelConfig) {
-        try {
-          excelConfig = JSON.parse(savedExcelConfig);
-          setExcelConfig(excelConfig);
-        } catch (e) {
-          console.error('Failed to parse Excel config:', e);
-        }
-      }
+      let parsedData: any[] = [];
       
       if (isExcel) {
-        // Handle Excel file
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
+        const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== ''));
+        
+        parsedData = rows.map(row => {
+          const obj: Record<string, any> = {};
+          fileHeaders.forEach((header, colIdx) => {
+            obj[header] = row[colIdx] !== undefined ? row[colIdx] : '';
+          });
+          return obj;
+        });
+      } else {
+        const text = await file.text();
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        parsedData = parsed.data as any[];
+      }
+      
+      setProgress(prev => prev ? { ...prev, total: parsedData.length } : null);
+      
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      let imported = 0;
+      
+      // Process each row
+      for (let i = 0; i < parsedData.length; i++) {
+        const row = parsedData[i];
+        setProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+        
         try {
-          const arrayBuffer = await selectedFile.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          const firstSheetName = excelConfig?.sheetName || workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const metadata: any = {};
           
-          if (jsonData.length > 0) {
-            const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-            const rows = jsonData.slice(1).map((row: any) => {
-              const obj: any = {};
-              headers.forEach((header, idx) => {
-                obj[header] = row[idx] !== undefined ? row[idx] : '';
-              });
-              return obj;
-            }).filter((row: any) => Object.values(row).some((v: any) => v !== ''));
+          // Map columns to fields
+          mappings.forEach(mapping => {
+            if (mapping.targetField === 'skip') return;
             
-            setPreview(rows.slice(0, 5));
+            const value = row[mapping.sourceColumn];
+            if (value === undefined || value === null || String(value).trim() === '') return;
             
-            // Check if this matches a saved configuration
-            const headerLower = headers.map(h => h.toLowerCase().trim());
-            let matchedConfig = null;
+            const strValue = String(value).trim();
             
-            // Check selected config first
-            if (selectedConfig) {
-              matchedConfig = savedConfigs.find(c => c.formatName === selectedConfig && c.fileType === 'excel');
+            switch (mapping.targetField) {
+              case 'question':
+              case 'description':
+                metadata.question = strValue;
+                metadata.description = strValue;
+                break;
+              case 'answer':
+                metadata.answer = strValue;
+                break;
+              case 'creator':
+                metadata.creator = strValue;
+                break;
+              case 'topics':
+                const topics = strValue.split(',').map(t => t.trim()).filter(Boolean);
+                metadata.topics = topics;
+                break;
+              case 'points':
+                const points = parseInt(strValue);
+                if (!isNaN(points)) metadata.points = points;
+                break;
+              case 'timer':
+                const timer = parseInt(strValue);
+                if (!isNaN(timer)) metadata.timer = timer;
+                break;
+              case 'options':
+                // Semicolon-delimited incorrect options
+                const options = strValue.split(';').map(o => o.trim()).filter(Boolean);
+                metadata.options = options;
+                break;
+              case 'date':
+                metadata.date = strValue;
+                break;
+              case 'round':
+                metadata.round = strValue;
+                break;
+              case 'set':
+                metadata.set = strValue;
+                break;
+              case 'explanation':
+                metadata.explanation = strValue;
+                break;
+              case 'notes':
+                metadata.notes = strValue;
+                break;
+              case 'source':
+                metadata.source = strValue;
+                break;
             }
-            
-            // If no selected config, try to auto-detect
-            if (!matchedConfig) {
-              matchedConfig = savedConfigs.find(config => {
-                if (config.fileType !== 'excel') return false;
-                if (config.detectionPatterns && config.detectionPatterns.length > 0) {
-                  return config.detectionPatterns.some((pattern: string) => 
-                    headerLower.includes(pattern.toLowerCase().trim())
-                  );
-                }
-                return false;
-              });
-            }
-            
-            // Fall back to legacy Excel config
-            if (!matchedConfig && excelConfig) {
-              const isExcelFormat = excelConfig.detectionPatterns && 
-                excelConfig.detectionPatterns.some((pattern: string) => 
-                  headerLower.includes(pattern.toLowerCase().trim())
-                );
-              if (isExcelFormat) {
-                matchedConfig = excelConfig;
-              }
-            }
-            
-            setIsExcelFormat(!!matchedConfig);
-            if (matchedConfig) {
-              setExcelConfig(matchedConfig);
-              setSelectedConfig(matchedConfig.formatName || 'Excel Format');
-            }
-            
-            // Start with matched config mapping if available, otherwise empty
-            const mapping: Record<string, string> = matchedConfig && matchedConfig.columnMapping 
-              ? { ...matchedConfig.columnMapping }
-              : {};
-            
-              // Auto-map fields
-              headers.forEach(header => {
-                if (mapping[header]) return;
-                
-                const lower = header.toLowerCase().trim();
-                // Check exact matches first
-                if (lower === 'question' || lower === 'questions') {
-                  // Map Question column to description (will be used for title generation)
-                  mapping[header] = 'description';
-                } else if (lower === 'category') {
-                  // Category is often a round/category name, map to description (can be changed by user)
-                  mapping[header] = 'description';
-                } else if (lower === 'type') {
-                  // "Type" column is usually question type, not file format
-                  mapping[header] = 'types';
-                } else if (lower === 'quiz' || lower === 'set') {
-                  mapping[header] = 'set';
-                } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
-                  mapping[header] = 'creator';
-                } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
-                  mapping[header] = 'date';
-                } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
-                  // Don't auto-map "category" here - it's handled above
-                  mapping[header] = 'topics';
-                // Format field removed - skip it
-                } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
-                  mapping[header] = 'questionCount';
-                } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
-                  mapping[header] = 'difficulty';
-                } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
-                  mapping[header] = 'description';
-                } else if (lower.includes('question') && lower.includes('type')) {
-                  mapping[header] = 'types';
-                } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
-                  mapping[header] = 'answer';
-                }
-              });
-            
-            setColumnMapping(mapping);
+          });
+          
+          // Ensure required fields
+          if (!metadata.question) {
+            throw new Error(`Row ${i + 1}: Missing required field "question"`);
+          }
+          if (!metadata.creator) {
+            metadata.creator = currentUser;
+          }
+          
+          // Remove correct answer from options if present
+          if (metadata.answer && metadata.options) {
+            metadata.options = metadata.options.filter((opt: string) => 
+              opt.toLowerCase() !== metadata.answer.toLowerCase()
+            );
+          }
+          
+          // Submit to API (using FormData format that submit API expects)
+          const formData = new FormData();
+          formData.append('metadata', JSON.stringify(metadata));
+          
+          const response = await fetch('/api/submit', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const result = await response.json();
+          if (result.success) {
+            imported++;
+          } else {
+            errors.push(`Row ${i + 1}: ${result.error || 'Unknown error'}`);
           }
         } catch (error) {
-          setResult({
-            success: false,
-            imported: 0,
-            errors: [error instanceof Error ? error.message : 'Failed to read Excel file']
-          });
+          errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-      } else {
-        // Handle CSV file
-      Papa.parse(selectedFile, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.data && results.data.length > 0) {
-            setPreview(results.data.slice(0, 5) as any[]);
-            const headers = Object.keys(results.data[0] as any);
-            
-            // Check if this looks like TrivNow format
-            const headerLower = headers.map(h => h.toLowerCase().trim());
-              const isTrivnow = trivnowConfig && trivnowConfig.detectionPatterns && 
-                trivnowConfig.detectionPatterns.some((pattern: string) => 
-                headerLower.includes(pattern.toLowerCase().trim())
-              );
-            setIsTrivnowFormat(!!isTrivnow);
-            
-            // Start with TrivNow config mapping if available, otherwise empty
-              const mapping: Record<string, string> = isTrivnow && trivnowConfig.columnMapping 
-                ? { ...trivnowConfig.columnMapping }
-              : {};
-            
-            // Auto-map fields that aren't already mapped (for both TrivNow and regular CSVs)
-            headers.forEach(header => {
-              // Skip if already mapped (preserves TrivNow config mappings)
-              if (mapping[header]) return;
-              
-              const lower = header.toLowerCase().trim();
-                // Check exact matches first
-                if (lower === 'question' || lower === 'questions') {
-                  // Map Question column to description (will be used for title generation)
-                  mapping[header] = 'description';
-                } else if (lower === 'category') {
-                  // Category is often a round/category name, map to description (can be changed by user)
-                  mapping[header] = 'description';
-                } else if (lower === 'type') {
-                  // "Type" column is usually question type, not file format
-                  mapping[header] = 'types';
-                } else if (lower === 'quiz' || lower === 'set') {
-                mapping[header] = 'set';
-              } else if (lower.includes('creator') || lower.includes('author') || lower.includes('user') || lower.includes('owner') || lower === 'by') {
-                mapping[header] = 'creator';
-              } else if (lower.includes('date') || lower.includes('created') || lower.includes('published')) {
-                mapping[header] = 'date';
-                } else if (lower.includes('topic') || lower.includes('subject') || lower.includes('tag')) {
-                  // Don't auto-map "category" here - it's handled above
-                mapping[header] = 'topics';
-                // Format field removed - skip it
-                } else if ((lower.includes('question') && lower.includes('count')) || lower === 'count') {
-                mapping[header] = 'questionCount';
-              } else if (lower.includes('difficulty') || lower.includes('level') || lower.includes('difficult')) {
-                mapping[header] = 'difficulty';
-              } else if (lower.includes('description') || lower.includes('desc') || lower.includes('notes')) {
-                mapping[header] = 'description';
-              } else if (lower.includes('question') && lower.includes('type')) {
-                mapping[header] = 'types';
-              } else if (lower === 'correctanswer' || lower === 'correct_answer' || (lower.includes('correct') && lower.includes('answer'))) {
-                mapping[header] = 'answer';
-              }
-            });
-            
-            setColumnMapping(mapping);
-          }
-        },
-        error: (error) => {
-          setResult({
-            success: false,
-            imported: 0,
-            errors: [error.message]
-          });
-        }
-      });
-      }
-    }
-  };
-
-  const processRows = async (rows: any[]) => {
-          const errors: string[] = [];
-          let imported = 0;
-          const debugInfo: any = {
-            totalRows: rows.length,
-            firstRow: rows[0],
-            columnMapping: columnMapping,
-            availableColumns: rows[0] ? Object.keys(rows[0]) : [],
-      isTrivnowFormat: isTrivnowFormat,
-      isExcelFormat: isExcelFormat,
-      fileType: fileType
-          };
-
-          // Import each row as a separate content item (one row = one content item)
-          for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            try {
-              const metadata: any = {};
-              
-              // First pass: collect all values for each mapped field
-        const fieldValues: Record<string, any[]> = {};
         
-        Object.keys(columnMapping).forEach(col => {
-          const mappedField = columnMapping[col];
-          if (!mappedField || mappedField === 'skip') return;
-          
-          const value = row[col];
-          
-          // Handle options specially - preserve original value type for date handling
-          if (mappedField === 'options') {
-            if (value !== undefined && value !== null) {
-              if (!fieldValues[mappedField]) {
-                fieldValues[mappedField] = [];
-              }
-              fieldValues[mappedField].push(value); // Keep original value for date detection
-            }
-          } else if (value !== undefined && value !== null && value.toString().trim()) {
-                  if (!fieldValues[mappedField]) {
-                    fieldValues[mappedField] = [];
-                  }
-                  fieldValues[mappedField].push(value.toString().trim());
-                }
-              });
-              
-              // Process collected values
-              Object.keys(fieldValues).forEach(mappedField => {
-                const values = fieldValues[mappedField];
-                
-                if (mappedField === 'topics') {
-                  // Combine all topic values and split by comma
-                  const allTopics = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-                  metadata.topics = [...new Set(allTopics)]; // Remove duplicates
-                } else if (mappedField === 'questionCount') {
-                  // Use the first valid number
-                  const num = parseInt(values[0]) || undefined;
-                  if (num) metadata.questionCount = num;
-                } else if (mappedField === 'types') {
-                  // Combine all type values and split by comma
-                  const allTypes = values.join(',').split(',').map((t: string) => t.trim()).filter(Boolean);
-                  metadata.types = [...new Set(allTypes)]; // Remove duplicates
-          } else if (mappedField === 'description' || mappedField === 'question') {
-            // Concatenate multiple question fields with line breaks
-            const questionText = values.join('\n\n');
-            metadata.question = questionText;
-            metadata.description = questionText; // Backward compatibility
-                } else if (mappedField === 'creator') {
-                  // Use first non-empty creator value
-                  metadata.creator = values.find(v => v) || '';
-                } else if (mappedField === 'answer') {
-                  // Store answer in both answer and correctAnswer fields
-                  const answerValue = values[0];
-                  metadata.answer = answerValue;
-                  metadata.correctAnswer = answerValue;
-          } else if (mappedField === 'points') {
-            // Parse as integer
-            const num = parseInt(values[0]) || undefined;
-            if (num !== undefined && !isNaN(num)) metadata.points = num;
-          } else if (mappedField === 'timer') {
-            // Parse as integer (seconds)
-            const num = parseInt(values[0]) || undefined;
-            if (num !== undefined && !isNaN(num)) metadata.timer = num;
-          } else if (mappedField === 'round' || mappedField === 'set' || mappedField === 'explanation' || mappedField === 'notes' || mappedField === 'source') {
-            // Use first value for these text fields
-            metadata[mappedField] = values[0] || undefined;
-          } else if (mappedField === 'alternateAnswers') {
-            // Split by comma and clean up
-            const allAnswers = values.join(',').split(',').map((a: string) => a.trim()).filter(Boolean);
-            metadata.alternateAnswers = [...new Set(allAnswers)]; // Remove duplicates
-          } else if (mappedField === 'options') {
-            // Handle incorrect options (distractors) - semicolon-delimited
-            // Collect all option values, handling dates and other formats
-            const optionValues: string[] = [];
-            const correctAnswer = metadata.answer || metadata.correctAnswer || '';
-            
-            values.forEach((val: any) => {
-              // Convert value to string, handling dates
-              let optionStr = '';
-              
-              // Check if it's a Date object
-              if (val instanceof Date) {
-                // Format date as YYYY-MM-DD
-                optionStr = val.toISOString().split('T')[0];
-              } else if (val !== null && val !== undefined) {
-                // Check if it's an Excel date serial number (numeric dates)
-                const numVal = typeof val === 'number' ? val : parseFloat(String(val));
-                if (!isNaN(numVal) && numVal > 25569 && numVal < 1000000) {
-                  // Excel date serial number (days since 1900-01-01)
-                  // Excel epoch: January 1, 1900 = 1
-                  // JavaScript epoch: January 1, 1970 = 25569 in Excel
-                  const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899 (Excel's epoch)
-                  const jsDate = new Date(excelEpoch.getTime() + (numVal - 1) * 86400 * 1000);
-                  optionStr = jsDate.toISOString().split('T')[0];
-                } else {
-                  // Regular string value or other format
-                  const strVal = String(val).trim();
-                  
-                  // Check if it looks like a date string (YYYY-MM-DD, MM/DD/YYYY, etc.)
-                  const dateMatch = strVal.match(/^\d{4}-\d{2}-\d{2}$/) || 
-                                   strVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/) ||
-                                   strVal.match(/^\d{1,2}-\d{1,2}-\d{4}$/);
-                  
-                  if (dateMatch) {
-                    // Try to parse and format as YYYY-MM-DD
-                    const parsedDate = new Date(strVal);
-                    if (!isNaN(parsedDate.getTime())) {
-                      optionStr = parsedDate.toISOString().split('T')[0];
-                    } else {
-                      optionStr = strVal;
-                    }
-                  } else {
-                    optionStr = strVal;
-                  }
-                }
-              } else {
-                optionStr = String(val || '').trim();
-              }
-              
-              // Split by semicolon first (primary delimiter), then by comma (fallback)
-              const delimiters = [';', ','];
-              let splitOptions: string[] = [optionStr];
-              
-              for (const delimiter of delimiters) {
-                const newSplit: string[] = [];
-                splitOptions.forEach(opt => {
-                  if (opt.includes(delimiter)) {
-                    newSplit.push(...opt.split(delimiter).map(o => o.trim()).filter(Boolean));
-                  } else {
-                    newSplit.push(opt.trim());
-                  }
-                });
-                splitOptions = newSplit;
-              }
-              
-              splitOptions.forEach(opt => {
-                const trimmed = opt.trim();
-                // Only add if it's not empty and not the correct answer
-                if (trimmed && trimmed.toLowerCase() !== correctAnswer.toLowerCase() && !optionValues.includes(trimmed)) {
-                  optionValues.push(trimmed);
-                }
-              });
-            });
-            
-            // Merge with existing options if any (from groupMultipleChoiceQuestions)
-            // Filter out correct answer from existing options
-            if (row.options && Array.isArray(row.options) && row.options.length > 0) {
-              const filteredExisting = row.options.filter((opt: string) => 
-                opt.toLowerCase() !== correctAnswer.toLowerCase()
-              );
-              metadata.options = [...new Set([...filteredExisting, ...optionValues])];
-            } else {
-              metadata.options = optionValues;
-            }
-          } else {
-            // For other fields, use the first value (or concatenate if it makes sense)
-            metadata[mappedField] = values[0];
-          }
-        });
-
-        // Handle options array if present (from groupMultipleChoiceQuestions) and not already processed
-        if (!metadata.options && row.options && Array.isArray(row.options) && row.options.length > 0) {
-          metadata.options = row.options;
-        }
-
-        // Title removed - not needed for individual questions (only for sets/rounds)
-
-        // Use current user as creator if no creator is mapped
-              if (!metadata.creator) {
-          if (currentUser) {
-            // Use logged-in user as creator
-            metadata.creator = currentUser;
-          } else if (defaultCreator.trim()) {
-                  metadata.creator = defaultCreator.trim();
-          } else if ((isTrivnowFormat || isExcelFormat) && row['source']) {
-                  metadata.creator = row['source'].toString();
-                } else {
-            errors.push(`Row ${i + 1}: Missing creator. Please select a user or set a default creator above.`);
-                  continue;
-                }
-              }
-
-              if (!metadata.date) {
-                metadata.date = new Date().toISOString().split('T')[0];
-              }
-
-              const formData = new FormData();
-              formData.append('metadata', JSON.stringify(metadata));
-
-              const response = await fetch('/api/submit', {
-                method: 'POST',
-                body: formData,
-              });
-
-              const result = await response.json();
-
-              if (!response.ok) {
-                errors.push(`Row ${i + 1}: ${result.error || 'Failed to import'}`);
-              } else {
-                imported++;
-              }
-            } catch (error) {
-              errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          }
-
-    return { imported, errors, debugInfo };
-  };
-
-  const handleImport = async () => {
-    if (!currentUser) {
-      alert('Please select or create a user first before importing.');
-      return;
-    }
-    if (!file) return;
-
-    setImporting(true);
-    setResult(null);
-
-    try {
-      if (fileType === 'excel') {
-        // Handle Excel file
-        const arrayBuffer = await file.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const firstSheetName = excelConfig?.sheetName || workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        if (jsonData.length > 0) {
-          const headers = (jsonData[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-          
-          // Convert raw rows to objects
-          const rawRows = jsonData.slice(1).map((row: any) => {
-            const obj: any = {};
-            headers.forEach((header, idx) => {
-              obj[header] = row[idx] !== undefined ? row[idx] : '';
-            });
-            return obj;
-          }).filter((row: any) => Object.values(row).some((v: any) => v !== ''));
-          
-          // Group multiple-choice questions with their answer options
-          const rows = groupMultipleChoiceQuestions(rawRows, headers);
-          
-          const { imported, errors, debugInfo } = await processRows(rows);
-          
-          setResult({
-            success: imported > 0,
-            imported,
-            errors,
-            message: `Imported ${imported} of ${rows.length} rows`,
-            debug: debugInfo
-          });
-          setImporting(false);
-        } else {
-          setResult({
-            success: false,
-            imported: 0,
-            errors: ['Excel file appears to be empty']
-          });
-          setImporting(false);
-        }
-      } else {
-        // Handle CSV file
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: async (results) => {
-            const rows = results.data as any[];
-            const { imported, errors, debugInfo } = await processRows(rows);
-
-          setResult({
-            success: imported > 0,
-            imported,
-            errors,
-            message: `Imported ${imported} of ${rows.length} rows`,
-            debug: debugInfo
-          });
-          setImporting(false);
-        },
-        error: (error) => {
-          setResult({
-            success: false,
-            imported: 0,
-            errors: [error.message]
-          });
-          setImporting(false);
-        }
-      });
+        setProgress(prev => prev ? { ...prev, imported, errors: errors.length } : null);
       }
+      
+      setResults({ imported, errors, warnings });
+      setImporting(false);
     } catch (error) {
-      setResult({
-        success: false,
-        imported: 0,
-        errors: [error instanceof Error ? error.message : 'Failed to parse file']
-      });
+      console.error('Import error:', error);
+      alert('Error during import. Please try again.');
       setImporting(false);
     }
   };
 
   return (
-    <div>
-      <header className="header">
-        <div className="container">
-          <h1>Import CSV/Excel</h1>
-          <p>Import trivia content from a CSV or Excel (.xlsx) file</p>
-          <Navigation />
-          <UserSelector />
-          {!currentUser && (
-            <div style={{
-              background: '#fff3cd',
-              border: '1px solid #ffc107',
-              padding: '15px',
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+      <Navigation />
+      
+      <h1 style={{ marginTop: '30px', marginBottom: '20px' }}>Import Questions</h1>
+      
+      {!file ? (
+        <div
+          onDrop={(e) => {
+            e.preventDefault();
+            const droppedFile = e.dataTransfer.files[0];
+            if (droppedFile) handleFileSelect(droppedFile);
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          style={{
+            border: '3px dashed #0066cc',
+            borderRadius: '12px',
+            padding: '60px',
+            textAlign: 'center',
+            background: '#f0f7ff',
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>📁</div>
+          <h2 style={{ marginBottom: '10px', color: '#0066cc' }}>Drop your file here</h2>
+          <p style={{ color: '#666', marginBottom: '20px' }}>or click to browse</p>
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                handleFileSelect(e.target.files[0]);
+              }
+            }}
+            style={{ display: 'none' }}
+            id="file-input"
+          />
+          <label
+            htmlFor="file-input"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#0066cc',
+              color: '#fff',
               borderRadius: '6px',
-              marginTop: '15px',
-              color: '#856404'
-            }}>
-              ⚠️ Please select or create a user to import content. You'll only see formats you've configured.
-            </div>
-          )}
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            Choose File
+          </label>
+          <p style={{ marginTop: '20px', fontSize: '14px', color: '#999' }}>
+            Supports CSV and Excel files (.csv, .xlsx, .xls)
+          </p>
         </div>
-      </header>
-
-      <main className="container">
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      ) : (
+        <div>
+          {/* File Info */}
           <div style={{
-            background: '#fff',
-            padding: '30px',
+            background: '#f8f9fa',
+            padding: '15px',
             borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            <h2 style={{ marginBottom: '20px' }}>CSV/Excel Format</h2>
-            <p style={{ marginBottom: '15px', color: '#666' }}>
-              Your CSV or Excel file should have columns that can be mapped to our metadata fields:
-            </p>
-            <div style={{
-              background: '#f5f5f5',
-              padding: '15px',
-              borderRadius: '4px',
-              fontFamily: 'monospace',
-              fontSize: '14px',
-              marginBottom: '20px'
-            }}>
-              <div><strong>Required:</strong> question and creator</div>
-              <div><strong>Creator:</strong> Either map a "creator" column OR set a default creator below</div>
-              <div><strong>Optional:</strong> date, topics (comma-separated), questionCount, difficulty, types, answer, points, timer, round, set, explanation, notes, source</div>
+            <div>
+              <strong>{file.name}</strong>
+              <span style={{ marginLeft: '10px', color: '#666' }}>
+                ({headers.length} columns, {previewRows.length > 0 ? '~' : ''} rows)
+              </span>
             </div>
-            <div style={{
-              background: '#e3f2fd',
-              padding: '15px',
-              borderRadius: '4px',
-              marginTop: '15px'
-            }}>
-              <strong>Example CSV:</strong>
-              <pre style={{ marginTop: '10px', fontSize: '12px', overflow: 'auto' }}>
-{`question,creator,date,topics,questionCount,difficulty,answer
-"What is the capital of France?","John Doe","2024-01-15","geography",1,"easy","Paris"
-"What year did World War II end?","Jane Smith","2024-01-16","history",1,"medium","1945"`}
-              </pre>
-            </div>
+            <button
+              onClick={() => {
+                setFile(null);
+                setHeaders([]);
+                setPreviewRows([]);
+                setMappings([]);
+                setResults(null);
+              }}
+              style={{
+                padding: '6px 12px',
+                background: '#dc3545',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Change File
+            </button>
           </div>
 
-          <div style={{
-            background: '#fff',
-            padding: '30px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            {hasAnyConfig && (
-              <div style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
-                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-                  Use Saved Configuration (Optional)
-                </label>
-                <select
-                  value={selectedConfig}
-                  onChange={(e) => {
-                    setSelectedConfig(e.target.value);
-                    if (e.target.value) {
-                      const config = savedConfigs.find(c => c.formatName === e.target.value);
-                      if (config) {
-                        setColumnMapping(config.columnMapping || {});
-                        if (config.fileType === 'excel') {
-                          setIsExcelFormat(true);
-                          setExcelConfig(config);
-                        } else if (config.fileType === 'csv') {
-                          setIsTrivnowFormat(true);
-                          setTrivnowConfig(config);
-                        }
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '16px',
-                    background: '#fff'
-                  }}
-                >
-                  <option value="">-- Select a saved format (or configure new) --</option>
-                  {savedConfigs.map((config, idx) => (
-                    <option key={idx} value={config.formatName}>
-                      {config.formatName} ({config.fileType?.toUpperCase() || 'Unknown'})
-                    </option>
-                  ))}
-                </select>
-                <p style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
-                  💡 Don't have a configuration? <Link href="/configure-import" style={{ color: '#0066cc' }}>Create one here</Link>
-                </p>
+          {/* Column Mapping */}
+          {mappings.length > 0 && (
+            <div style={{ marginBottom: '30px' }}>
+              <h2 style={{ marginBottom: '15px' }}>Column Mapping</h2>
+              <p style={{ color: '#666', marginBottom: '15px' }}>
+                Review and adjust how columns are mapped to fields. Fields marked with ⭐ are required.
+              </p>
+              
+              <div style={{
+                background: '#fff',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fa' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Source Column</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Map To</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mappings.map((mapping, idx) => {
+                      const fieldDef = FIELD_DEFINITIONS.find(f => f.value === mapping.targetField);
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #dee2e6' }}>
+                          <td style={{ padding: '12px' }}>{mapping.sourceColumn}</td>
+                          <td style={{ padding: '12px' }}>
+                            <select
+                              value={mapping.targetField}
+                              onChange={(e) => updateMapping(mapping.sourceColumn, e.target.value)}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc',
+                                width: '100%',
+                                maxWidth: '300px'
+                              }}
+                            >
+                              {FIELD_DEFINITIONS.map(field => (
+                                <option key={field.value} value={field.value}>
+                                  {field.label} {field.required ? '⭐' : ''}
+                                </option>
+                              ))}
+                            </select>
+                            {fieldDef && (
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                {fieldDef.description}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {mapping.confidence > 0 ? (
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                background: mapping.confidence > 70 ? '#d4edda' : '#fff3cd',
+                                color: mapping.confidence > 70 ? '#155724' : '#856404',
+                                fontSize: '12px'
+                              }}>
+                                {mapping.confidence.toFixed(0)}%
+                              </span>
+                            ) : (
+                              <span style={{ color: '#999' }}>Manual</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
+          )}
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-                Select CSV or Excel File
-              </label>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileChange}
-                disabled={!currentUser}
-                style={{
+          {/* Preview */}
+          {previewRows.length > 0 && (
+            <div style={{ marginBottom: '30px' }}>
+              <h2 style={{ marginBottom: '15px' }}>Preview</h2>
+              <p style={{ color: '#666', marginBottom: '15px' }}>
+                Preview of how your data will be imported (showing first {previewRows.length} rows):
+              </p>
+              
+              <div style={{
+                background: '#fff',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                overflowX: 'auto'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fa' }}>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Row</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Question</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Answer</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((row) => (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                        <td style={{ padding: '10px' }}>{row.id}</td>
+                        <td style={{ padding: '10px' }}>
+                          {row.mapped.question || row.mapped.description || (
+                            <span style={{ color: '#dc3545' }}>Missing</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          {row.mapped.answer || <span style={{ color: '#999' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          {row.errors.length > 0 ? (
+                            <span style={{ color: '#dc3545' }}>❌ {row.errors[0]}</span>
+                          ) : row.warnings.length > 0 ? (
+                            <span style={{ color: '#ffc107' }}>⚠️ {row.warnings[0]}</span>
+                          ) : (
+                            <span style={{ color: '#28a745' }}>✅ OK</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Progress */}
+          {importing && progress && (
+            <div style={{
+              background: '#e7f3ff',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ marginBottom: '10px' }}>Importing...</h3>
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{
                   width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: currentUser ? 'pointer' : 'not-allowed',
-                  opacity: currentUser ? 1 : 0.6
+                  height: '24px',
+                  background: '#dee2e6',
+                  borderRadius: '12px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${(progress.current / progress.total) * 100}%`,
+                    height: '100%',
+                    background: '#0066cc',
+                    transition: 'width 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}>
+                    {progress.current} / {progress.total}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '14px' }}>
+                <span>✅ Imported: {progress.imported}</span>
+                <span>❌ Errors: {progress.errors}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Results */}
+          {results && !importing && (
+            <div style={{
+              background: results.errors.length > 0 ? '#fff3cd' : '#d4edda',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ marginBottom: '15px' }}>
+                {results.errors.length === 0 ? '✅ Import Complete!' : '⚠️ Import Completed with Errors'}
+              </h3>
+              <div style={{ marginBottom: '10px' }}>
+                <strong>Successfully imported:</strong> {results.imported} questions
+              </div>
+              {results.errors.length > 0 && (
+                <div style={{ marginTop: '15px' }}>
+                  <strong>Errors ({results.errors.length}):</strong>
+                  <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
+                    {results.errors.slice(0, 10).map((error, idx) => (
+                      <li key={idx} style={{ marginBottom: '5px' }}>{error}</li>
+                    ))}
+                    {results.errors.length > 10 && (
+                      <li>... and {results.errors.length - 10} more errors</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Import Button */}
+          {!importing && !results && (
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <button
+                onClick={processImport}
+                disabled={mappings.filter(m => m.targetField === 'question').length === 0}
+                style={{
+                  padding: '15px 40px',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  background: mappings.filter(m => m.targetField === 'question').length === 0 ? '#ccc' : '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: mappings.filter(m => m.targetField === 'question').length === 0 ? 'not-allowed' : 'pointer'
                 }}
-              />
-              {!hasAnyConfig && currentUser && (
-                <p style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
-                  💡 <Link href="/configure-import" style={{ color: '#0066cc' }}>Configure a format</Link> to make imports easier!
+              >
+                Import Questions
+              </button>
+              {mappings.filter(m => m.targetField === 'question').length === 0 && (
+                <p style={{ marginTop: '10px', color: '#dc3545' }}>
+                  Please map at least one column to "Question" to proceed.
                 </p>
               )}
             </div>
-
-            {preview.length > 0 && (
-              <div style={{ marginBottom: '30px' }}>
-                <h3 style={{ marginBottom: '15px' }}>Column Mapping</h3>
-                {(isTrivnowFormat || isExcelFormat) && (
-                  <div style={{
-                    background: '#e3f2fd',
-                    border: '1px solid #2196f3',
-                    padding: '15px',
-                    borderRadius: '4px',
-                    marginBottom: '15px'
-                  }}>
-                    <strong>⚙️ {isExcelFormat ? 'Excel' : 'TrivNow'} Format Detected</strong>
-                    <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>
-                      Each row will be imported as a separate content item. Map the columns you want to include in the metadata.
-                      <br />
-                      <strong>Tip:</strong> The "question" column can be mapped to "description", and "source" can be mapped to "creator".
-                    </p>
-                  </div>
-                )}
-                {!currentUser && (
-                <div style={{
-                    background: '#fff3cd',
-                    border: '1px solid #ffc107',
-                  padding: '15px',
-                  borderRadius: '4px',
-                  marginBottom: '15px'
-                }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
-                      Default Creator (Required if no user selected and CSV doesn't have creator column)
-                  </label>
-                  <input
-                    type="text"
-                    value={defaultCreator}
-                    onChange={(e) => setDefaultCreator(e.target.value)}
-                    placeholder="Enter your name or creator name"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '16px'
-                    }}
-                  />
-                  <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#666' }}>
-                    This will be used as the creator for all imported items if no creator column is mapped.
-                  </p>
-                </div>
-                )}
-                {currentUser && (
-                  <div style={{
-                    background: '#e7f3ff',
-                    border: '1px solid #0066cc',
-                    padding: '15px',
-                    borderRadius: '4px',
-                    marginBottom: '15px'
-                  }}>
-                    <p style={{ margin: '0', fontSize: '14px', color: '#0066cc' }}>
-                      ℹ️ <strong>Creator:</strong> Will automatically use <strong>{currentUser}</strong> for all imported items (unless a creator column is mapped).
-                    </p>
-                  </div>
-                )}
-                <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
-                  Map your {fileType === 'excel' ? 'Excel' : 'CSV'} columns to our metadata fields. Auto-detected mappings are shown below.
-                  {!(isTrivnowFormat || isExcelFormat) && (
-                    <strong style={{ color: '#c62828', display: 'block', marginTop: '5px' }}>
-                      Make sure "Question" and "Creator" columns are mapped!
-                    </strong>
-                  )}
-                </p>
-                <div style={{
-                  background: '#f9f9f9',
-                  padding: '15px',
-                  borderRadius: '4px',
-                  marginBottom: '15px'
-                }}>
-                  {Object.keys(preview[0] || {}).map((csvCol) => (
-                    <div key={csvCol} style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <label style={{ minWidth: '150px', fontWeight: '500' }}>{csvCol}:</label>
-                      <select
-                        value={columnMapping[csvCol] || ''}
-                        onChange={(e) => setColumnMapping({ ...columnMapping, [csvCol]: e.target.value })}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          background: columnMapping[csvCol] === 'question' || columnMapping[csvCol] === 'creator' ? '#fff3cd' : '#fff'
-                        }}
-                      >
-                        <option value="">-- Skip --</option>
-                        <option value="question">Question *</option>
-                        <option value="creator">Creator *</option>
-                        <option value="date">Date</option>
-                        <option value="topics">Topics (comma-separated)</option>
-                        <option value="format">Format</option>
-                        <option value="questionCount">Question Count</option>
-                        <option value="difficulty">Difficulty</option>
-                        <option value="types">Types (comma-separated)</option>
-                        <option value="description">Description</option>
-                        <option value="answer">Answer / Correct Answer</option>
-                        <option value="options">Incorrect Options (Distractors) - semicolon-delimited</option>
-                        <option value="alternateAnswers">Alternate Answers (comma-separated)</option>
-                        <option value="points">Points</option>
-                        <option value="timer">Time Limit (seconds)</option>
-                        <option value="round">Round</option>
-                        <option value="set">Quiz Set/Event</option>
-                        <option value="explanation">Explanation</option>
-                        <option value="notes">Host Notes</option>
-                        <option value="source">Source</option>
-                      </select>
-                    </div>
-                  ))}
-                </div>
-
-                <h3 style={{ marginBottom: '15px' }}>Preview (first 5 rows)</h3>
-                <div style={{
-                  overflowX: 'auto',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px'
-                }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                    <thead>
-                      <tr style={{ background: '#f5f5f5' }}>
-                        {Object.keys(preview[0] || {}).map(col => (
-                          <th key={col} style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.map((row, idx) => (
-                        <tr key={idx}>
-                          {Object.values(row).map((cell: any, cellIdx) => (
-                            <td key={cellIdx} style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                              {String(cell || '').substring(0, 50)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {result && (
-              <div style={{
-                padding: '15px',
-                borderRadius: '4px',
-                marginBottom: '20px',
-                background: result.success ? '#e8f5e9' : '#ffebee',
-                color: result.success ? '#2e7d32' : '#c62828'
-              }}>
-                <div style={{ fontWeight: '600', marginBottom: '10px' }}>
-                  {result.success ? '✓ Import Complete' : '✗ Import Failed'}
-                </div>
-                <div>{result.message}</div>
-                {result.errors.length > 0 && (
-                  <div style={{ marginTop: '10px' }}>
-                    <strong>Errors:</strong>
-                    <button
-                      onClick={() => setShowDebug(!showDebug)}
-                      style={{
-                        marginLeft: '10px',
-                        padding: '4px 8px',
-                        background: '#666',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      {showDebug ? 'Hide' : 'Show'} Debug Info
-                    </button>
-                    {showDebug && result.debug && (
-                      <pre style={{
-                        marginTop: '10px',
-                        padding: '10px',
-                        background: '#f5f5f5',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        overflow: 'auto'
-                      }}>
-                        {JSON.stringify(result.debug, null, 2)}
-                      </pre>
-                    )}
-                    <ul style={{ marginTop: '5px', paddingLeft: '20px' }}>
-                      {result.errors.slice(0, 10).map((error, idx) => (
-                        <li key={idx} style={{ fontSize: '14px' }}>{error}</li>
-                      ))}
-                      {result.errors.length > 10 && (
-                        <li style={{ fontSize: '14px' }}>... and {result.errors.length - 10} more errors</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button
-                onClick={handleImport}
-                disabled={!file || importing || preview.length === 0}
-                style={{
-                  padding: '12px 24px',
-                  background: (!file || importing || preview.length === 0) ? '#ccc' : '#0066cc',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: (!file || importing || preview.length === 0) ? 'not-allowed' : 'pointer',
-                  flex: 1
-                }}
-              >
-                {importing ? 'Importing...' : `Import ${fileType === 'excel' ? 'Excel' : 'CSV'}`}
-              </button>
-              <button
-                onClick={() => router.push('/')}
-                style={{
-                  padding: '12px 24px',
-                  background: '#666',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      </main>
+      )}
     </div>
   );
 }
