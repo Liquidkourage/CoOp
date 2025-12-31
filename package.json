@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/xlsx": "^0.0.35",
+    "googleapis": "^169.0.0",
     "next": "^14.0.0",
     "papaparse": "^5.4.1",
     "pg": "^8.11.3",
