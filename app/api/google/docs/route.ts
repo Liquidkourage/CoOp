@@ -63,6 +63,14 @@ function parseGoogleDocContent(doc: any): any[] {
     rows.push(...paragraphRows);
   }
   
+  // If still no rows, try numbered question format (Q: question text, A: answer)
+  if (rows.length === 0) {
+    console.log('Trying numbered question format parsing');
+    const numberedRows = parseNumberedQuestions(doc.body.content);
+    console.log(`Numbered question parsing found ${numberedRows.length} rows`);
+    rows.push(...numberedRows);
+  }
+  
   return rows;
 }
 
