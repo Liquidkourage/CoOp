@@ -331,31 +331,55 @@ function parseNumberedQuestions(content: any[]): any[] {
   let roundName = '';
   const allText: string[] = [];
   
-  // Extract text from each paragraph separately (preserve paragraph boundaries)
-  function extractParagraphText(node: any): string {
-    let text = '';
+  // Extract text from each paragraph, splitting on vertical tabs (\u000b) which often separate Q&A
+  function extractParagraphText(node: any): string[] {
+    const lines: string[] = [];
     
     if (node.paragraph) {
       if (node.paragraph.elements) {
+        let currentLine = '';
         node.paragraph.elements.forEach((elem: any) => {
           if (elem.textRun) {
-            text += elem.textRun.content || '';
+            const content = elem.textRun.content || '';
+            // Split on vertical tab (often used to separate Q&A in same paragraph)
+            if (content.includes('\u000b')) {
+              const parts = content.split('\u000b');
+              // Add everything before the last vertical tab to current line
+              for (let i = 0; i < parts.length - 1; i++) {
+                currentLine += parts[i];
+                if (currentLine.trim()) {
+                  lines.push(currentLine.trim());
+                }
+                currentLine = '';
+              }
+              // Last part (after last vertical tab) becomes new current line
+              currentLine = parts[parts.length - 1];
+            } else {
+              currentLine += content;
+            }
           }
         });
+        // Add remaining line
+        if (currentLine.trim()) {
+          lines.push(currentLine.trim());
+        }
       }
     }
     
-    return text;
+    // If no lines extracted, return empty array
+    return lines.length > 0 ? lines : [''];
   }
   
-  // Process content to extract each paragraph as a separate line
+  // Process content to extract each paragraph, splitting Q&A that are in same paragraph
   function processContent(nodes: any[]) {
     nodes.forEach(node => {
       if (node.paragraph) {
-        const text = extractParagraphText(node).trim();
-        if (text) {
-          allText.push(text);
-        }
+        const lines = extractParagraphText(node);
+        lines.forEach(line => {
+          if (line) {
+            allText.push(line);
+          }
+        });
       }
       
       // Recursively process nested content
@@ -367,10 +391,12 @@ function parseNumberedQuestions(content: any[]): any[] {
       if (node.elements) {
         node.elements.forEach((elem: any) => {
           if (elem.paragraph) {
-            const text = extractParagraphText(elem).trim();
-            if (text) {
-              allText.push(text);
-            }
+            const lines = extractParagraphText(elem);
+            lines.forEach(line => {
+              if (line) {
+                allText.push(line);
+              }
+            });
           }
         });
       }
