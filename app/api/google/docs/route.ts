@@ -346,70 +346,50 @@ function parseNumberedQuestions(content: any[]): any[] {
   let roundName = '';
   const allText: string[] = [];
   
-  // Extract text from each paragraph, splitting on vertical tabs (\u000b) which often separate Q&A
-  function extractParagraphText(node: any): string[] {
+  // Extract text from each paragraph, splitting on vertical tabs (\u000b) which separate Q&A
+  function extractParagraphLines(node: any): string[] {
     const lines: string[] = [];
     
-    if (node.paragraph) {
-      if (node.paragraph.elements) {
-        let currentLine = '';
-        node.paragraph.elements.forEach((elem: any, idx: number) => {
-          if (elem.textRun) {
-            const content = elem.textRun.content || '';
-            console.log(`  📝 textRun ${idx}:`, JSON.stringify(content.substring(0, 100)));
-            
-            // Split on vertical tab (often used to separate Q&A in same paragraph)
-            if (content.includes('\u000b')) {
-              console.log(`  ✂️ Found vertical tab in textRun ${idx}`);
-              const parts = content.split('\u000b');
-              console.log(`  ✂️ Split into ${parts.length} parts`);
-              // Add everything before the last vertical tab to current line
-              for (let i = 0; i < parts.length - 1; i++) {
-                currentLine += parts[i];
-                if (currentLine.trim()) {
-                  console.log(`  ✅ Pushing line (from VT split):`, currentLine.trim().substring(0, 60));
-                  lines.push(currentLine.trim());
-                }
-                currentLine = '';
-              }
-              // Last part (after last vertical tab) becomes new current line
-              // (this handles the case where answer is in next textRun)
-              currentLine = parts[parts.length - 1];
-              console.log(`  📝 Current line after VT split:`, JSON.stringify(currentLine.substring(0, 50)));
-            } else {
-              // No vertical tab - add to current line
-              // But if current line was just finished (ends with ?), start a new line
-              if (currentLine.trim().endsWith('?') && content.trim() && !content.trim().startsWith('\n')) {
-                // Previous line was a question, this is likely the answer
-                console.log(`  ✅ Pushing question line, starting new line for answer:`, content.trim().substring(0, 50));
-                lines.push(currentLine.trim());
-                currentLine = content;
-              } else {
-                currentLine += content;
-              }
+    if (node.paragraph && node.paragraph.elements) {
+      let currentLine = '';
+      
+      node.paragraph.elements.forEach((elem: any) => {
+        if (elem.textRun) {
+          const content = elem.textRun.content || '';
+          
+          // Split on vertical tab - this separates Q&A in Google Docs
+          if (content.includes('\u000b')) {
+            const parts = content.split('\u000b');
+            // Everything before the vertical tab completes current line
+            currentLine += parts[0];
+            if (currentLine.trim()) {
+              lines.push(currentLine.trim());
             }
+            // Everything after the vertical tab starts new line
+            currentLine = parts.slice(1).join('\u000b');
+          } else {
+            // No vertical tab - append to current line
+            currentLine += content;
           }
-        });
-        // Add remaining line
-        if (currentLine.trim()) {
-          console.log(`  ✅ Pushing final line:`, currentLine.trim().substring(0, 60));
-          lines.push(currentLine.trim());
         }
+      });
+      
+      // Add final line
+      if (currentLine.trim()) {
+        lines.push(currentLine.trim());
       }
     }
     
-    console.log(`  📊 Extracted ${lines.length} lines from paragraph`);
-    // If no lines extracted, return empty array
-    return lines.length > 0 ? lines : [''];
+    return lines;
   }
   
-  // Process content to extract each paragraph, splitting Q&A that are in same paragraph
+  // Process content to extract each paragraph, splitting on vertical tabs
   function processContent(nodes: any[]) {
     nodes.forEach(node => {
       if (node.paragraph) {
-        const lines = extractParagraphText(node);
+        const lines = extractParagraphLines(node);
         lines.forEach(line => {
-          if (line) {
+          if (line && line !== '\n') {
             allText.push(line);
           }
         });
@@ -418,20 +398,6 @@ function parseNumberedQuestions(content: any[]): any[] {
       // Recursively process nested content
       if (node.content) {
         processContent(node.content);
-      }
-      
-      // Also check for nested elements
-      if (node.elements) {
-        node.elements.forEach((elem: any) => {
-          if (elem.paragraph) {
-            const lines = extractParagraphText(elem);
-            lines.forEach(line => {
-              if (line) {
-                allText.push(line);
-              }
-            });
-          }
-        });
       }
     });
   }
