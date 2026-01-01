@@ -71,6 +71,21 @@ function parseGoogleDocContent(doc: any): any[] {
     rows.push(...numberedRows);
   }
   
+  // If STILL no rows, fall back to simple line extraction - just extract all text lines
+  // User can manually pair them in the UI
+  if (rows.length === 0) {
+    console.log('All parsing methods failed, falling back to simple line extraction');
+    const simpleRows = extractAllTextLines(doc.body.content);
+    console.log(`Simple extraction found ${simpleRows.length} lines`);
+    // Return as raw lines - user will manually pair them
+    return simpleRows.map((line, idx) => ({
+      lineNumber: idx + 1,
+      text: line,
+      isQuestion: line.includes('?'),
+      isAnswer: false
+    }));
+  }
+  
   // Final safety check: Remove any rows where the question looks like a round name
   // (short, no question mark, doesn't start with question words)
   const filteredRows = rows.filter(row => {
