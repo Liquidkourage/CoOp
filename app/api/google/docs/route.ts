@@ -28,21 +28,39 @@ function parseGoogleDocContent(doc: any): any[] {
   const rows: any[] = [];
   
   if (!doc.body || !doc.body.content) {
+    console.log('No body or content found in document');
     return rows;
   }
   
+  console.log('Document structure:', JSON.stringify(doc.body.content.slice(0, 3), null, 2));
+  
   // Look for tables first (most structured)
   const tables = extractTables(doc.body.content);
+  console.log(`Found ${tables.length} tables`);
+  
   if (tables.length > 0) {
     // Use table data
-    tables.forEach(table => {
+    tables.forEach((table, idx) => {
       const tableRows = parseTable(table);
+      console.log(`Table ${idx + 1} has ${tableRows.length} rows`);
       rows.push(...tableRows);
     });
-  } else {
-    // Parse text content for structured patterns
+  }
+  
+  // Also try parsing text content (might have structured text)
+  if (rows.length === 0) {
+    console.log('No tables found, trying text parsing');
     const textRows = parseTextContent(doc.body.content);
+    console.log(`Text parsing found ${textRows.length} rows`);
     rows.push(...textRows);
+  }
+  
+  // If still no rows, try parsing paragraphs as potential questions
+  if (rows.length === 0) {
+    console.log('Trying paragraph-based parsing');
+    const paragraphRows = parseParagraphs(doc.body.content);
+    console.log(`Paragraph parsing found ${paragraphRows.length} rows`);
+    rows.push(...paragraphRows);
   }
   
   return rows;
