@@ -85,6 +85,16 @@ function parseGoogleDocContent(doc: any): any[] {
     });
   }
   
+  // Try numbered question format FIRST (most appropriate for Q&A format)
+  if (rows.length === 0) {
+    console.log('Trying numbered question format parsing');
+    const numberedRows = parseNumberedQuestions(doc.body.content);
+    console.log(`Numbered question parsing found ${numberedRows.length} rows`);
+    if (numberedRows.length > 0) {
+      rows.push(...numberedRows);
+    }
+  }
+  
   // Also try parsing text content (might have structured text)
   if (rows.length === 0) {
     console.log('No tables found, trying text parsing');
@@ -99,14 +109,6 @@ function parseGoogleDocContent(doc: any): any[] {
     const paragraphRows = parseParagraphs(doc.body.content);
     console.log(`Paragraph parsing found ${paragraphRows.length} rows`);
     rows.push(...paragraphRows);
-  }
-  
-  // If still no rows, try numbered question format (Q: question text, A: answer)
-  if (rows.length === 0) {
-    console.log('Trying numbered question format parsing');
-    const numberedRows = parseNumberedQuestions(doc.body.content);
-    console.log(`Numbered question parsing found ${numberedRows.length} rows`);
-    rows.push(...numberedRows);
   }
   
   // If STILL no rows, fall back to simple line extraction - just extract all text lines
