@@ -371,7 +371,17 @@ function GoogleDocsImportPageContent() {
       setDocumentTitle(data.documentTitle || 'Untitled Document');
       
       if (rows.length === 0) {
-        setError('No data found in document. Make sure it contains tables or Q&A formatted content.');
+        let errorMsg = 'No data found in document. ';
+        if (data.debug) {
+          errorMsg += `Debug info: ${data.debug.contentLength} content elements found. `;
+          errorMsg += 'Make sure your document contains:\n';
+          errorMsg += '• Tables with headers in the first row, OR\n';
+          errorMsg += '• Q&A format (Q1: question, A1: answer), OR\n';
+          errorMsg += '• Plain paragraphs (will be paired as question/answer)';
+        } else {
+          errorMsg += 'Make sure it contains tables with headers in the first row or Q&A formatted content.';
+        }
+        setError(errorMsg);
         setLoading(false);
         return;
       }
