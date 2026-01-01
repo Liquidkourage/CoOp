@@ -446,12 +446,13 @@ function parseNumberedQuestions(content: any[]): any[] {
     if (line.includes('?')) {
       // If we have a previous question without an answer, save it with empty answer
       if (currentQuestion) {
-        console.log('Previous question had no answer, saving with empty answer');
+        console.log('⚠️ Previous question had no answer, saving with empty answer');
         rows.push({
           question: currentQuestion.trim(),
           answer: '',
           round: roundName || undefined
         });
+        currentQuestion = ''; // Clear it
       }
       
       // Try to split question and answer on the same line
@@ -461,7 +462,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         // Question and answer on same line
         const question = questionMatch[2].trim();
         const answer = questionMatch[3].trim();
-        console.log('Found Q&A on same line');
+        console.log('✅ Found Q&A on same line');
         rows.push({
           question: question,
           answer: answer,
@@ -470,25 +471,25 @@ function parseNumberedQuestions(content: any[]): any[] {
         currentQuestion = ''; // Clear since we've saved this pair
       } else {
         // Just question, answer should be on next line
+        // Remove numbering prefix if present
         currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
-        console.log('Found question, waiting for answer on next line');
+        console.log('📝 Found question, waiting for answer on next line:', currentQuestion.substring(0, 60));
       }
     } else {
-      // Line without question mark
+      // Line without question mark - this MUST be an answer (or skipped if no question waiting)
       if (currentQuestion) {
-        // We have a question waiting - this line is the answer
-        console.log('Found answer for waiting question');
+        // We have a question waiting - this line is definitely the answer
+        console.log('✅ Found answer for waiting question');
         rows.push({
           question: currentQuestion.trim(),
-          answer: line,
+          answer: line.trim(),
           round: roundName || undefined
         });
         currentQuestion = ''; // Clear since we've saved this pair
       } else {
-        // No current question - this might be:
-        // 1. A standalone answer (skip - can't pair without question)
-        // 2. Part of a new round/section (skip for now)
-        console.log('Skipping line - no question waiting:', line.substring(0, 50));
+        // No current question - this line cannot be paired
+        // Skip it (might be a section header, round name that wasn't caught, etc.)
+        console.log('⏭️ Skipping line - no question waiting (might be header/round name):', line.substring(0, 50));
       }
     }
   }
