@@ -461,7 +461,21 @@ function parseNumberedQuestions(content: any[]): any[] {
     });
   }
   
-  console.log('Final parsed rows:', rows.length);
+  // Filter out any rows where question matches the round name (safety check)
+  const filteredRows = rows.filter(row => {
+    if (roundName && row.question && row.question.trim() === roundName.trim()) {
+      console.log('⚠️ Filtering out row that matches round name:', row.question);
+      return false;
+    }
+    return true;
+  });
+  
+  console.log(`Final parsed rows: ${filteredRows.length} (${rows.length} before filtering)`);
+  if (roundName) {
+    console.log(`Round name: "${roundName}"`);
+  }
+  
+  return filteredRows;
   return rows;
 }
 
