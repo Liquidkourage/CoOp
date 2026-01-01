@@ -446,10 +446,11 @@ function parseNumberedQuestions(content: any[]): any[] {
   
   console.log('📝 All extracted text lines:', allText.length);
   if (allText.length > 0) {
-    console.log('📝 First 5 lines:', allText.slice(0, 5).map((l, i) => `${i}: "${l.substring(0, 60)}"`));
+    console.log('📝 First 10 lines:', allText.slice(0, 10).map((l, i) => `${i}: "${l.substring(0, 80)}"`));
   }
   
   if (allText.length === 0) {
+    console.log('⚠️ No text lines extracted');
     return rows;
   }
   
@@ -464,6 +465,9 @@ function parseNumberedQuestions(content: any[]): any[] {
     roundName = firstLine;
     console.log('✅ Round name:', roundName);
     allText.shift(); // Remove from processing
+    console.log('✅ Remaining lines:', allText.length);
+  } else {
+    console.log('⚠️ First line does not look like round name:', firstLine.substring(0, 50));
   }
   
   // Process remaining lines - look for question-answer pairs
