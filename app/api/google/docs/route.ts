@@ -301,6 +301,125 @@ function parseParagraphs(content: any[]): any[] {
   return rows;
 }
 
+// Parse numbered questions format: "Question text? Answer" (answer on same or next line)
+function parseNumberedQuestions(content: any[]): any[] {
+  const rows: any[] = [];
+  let roundName = '';
+  const allText: string[] = [];
+  
+  // First, extract all text from paragraphs
+  function extractAllText(node: any): string {
+    let text = '';
+    
+    if (node.paragraph) {
+      if (node.paragraph.elements) {
+        node.paragraph.elements.forEach((elem: any) => {
+          if (elem.textRun) {
+            text += elem.textRun.content || '';
+          }
+        });
+      }
+    }
+    
+    if (node.content) {
+      node.content.forEach((child: any) => {
+        text += extractAllText(child);
+      });
+    }
+    
+    return text;
+  }
+  
+  content.forEach(node => {
+    const text = extractAllText(node).trim();
+    if (text) {
+      allText.push(text);
+    }
+  });
+  
+  if (allText.length === 0) {
+    return rows;
+  }
+  
+  // First line might be the round name (if it's short and doesn't look like a question)
+  const firstLine = allText[0].trim();
+  if (firstLine.length < 100 && !firstLine.includes('?') && !/^\d+\./.test(firstLine)) {
+    roundName = firstLine;
+    allText.shift(); // Remove round name from processing
+  }
+  
+  // Process remaining lines
+  let currentQuestion = '';
+  let currentAnswer = '';
+  
+  for (let i = 0; i < allText.length; i++) {
+    const line = allText[i].trim();
+    if (!line) continue;
+    
+    // Check if line contains a question mark (likely a question)
+    if (line.includes('?')) {
+      // If we have a previous question/answer pair, save it
+      if (currentQuestion) {
+        rows.push({
+          question: currentQuestion.trim(),
+          answer: currentAnswer.trim(),
+          round: roundName || undefined
+        });
+      }
+      
+      // Try to split question and answer on the same line
+      // Pattern: "Question text? Answer" or "1. Question text? Answer"
+      const questionMatch = line.match(/^(\d+\.\s*)?(.+?\?)\s*(.+)$/);
+      if (questionMatch && questionMatch[3].trim().length > 0) {
+        // Question and answer on same line
+        currentQuestion = questionMatch[2].trim();
+        currentAnswer = questionMatch[3].trim();
+      } else {
+        // Just question, answer might be on next line
+        currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
+        currentAnswer = '';
+        
+        // Check next line for answer
+        if (i + 1 < allText.length) {
+          const nextLine = allText[i + 1].trim();
+          // If next line doesn't look like a question, it's probably the answer
+          if (!nextLine.includes('?') && !/^\d+\./.test(nextLine) && nextLine.length > 0) {
+            currentAnswer = nextLine;
+            i++; // Skip next line since we used it
+          }
+        }
+      }
+    } else if (currentQuestion && !currentAnswer) {
+      // This might be the answer to the previous question
+      currentAnswer = line;
+    } else if (/^\d+\./.test(line)) {
+      // Numbered line without question mark - might be continuation or new question
+      if (currentQuestion && currentAnswer) {
+        rows.push({
+          question: currentQuestion.trim(),
+          answer: currentAnswer.trim(),
+          round: roundName || undefined
+        });
+        currentQuestion = '';
+        currentAnswer = '';
+      }
+      // Start new question
+      currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
+    }
+  }
+  
+  // Add last question/answer pair
+  if (currentQuestion) {
+    rows.push({
+      question: currentQuestion.trim(),
+      answer: currentAnswer.trim(),
+      round: roundName || undefined
+    });
+  }
+  
+  return rows;
+}
+
 export async function GET() {
   return NextResponse.json(
     { 
