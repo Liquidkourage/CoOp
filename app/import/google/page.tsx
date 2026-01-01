@@ -337,7 +337,8 @@ function GoogleDocsImportPageContent() {
         },
         body: JSON.stringify({
           documentId: docId,
-          accessToken: accessToken
+          accessToken: accessToken,
+          refreshToken: refreshToken
         })
       });
       
