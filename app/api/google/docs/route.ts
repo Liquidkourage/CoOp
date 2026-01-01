@@ -337,14 +337,20 @@ function parseNumberedQuestions(content: any[]): any[] {
     }
   });
   
+  console.log('All extracted text lines:', allText);
+  console.log('Total lines:', allText.length);
+  
   if (allText.length === 0) {
     return rows;
   }
   
   // First line might be the round name (if it's short and doesn't look like a question)
   const firstLine = allText[0].trim();
+  console.log('First line:', firstLine, 'Length:', firstLine.length, 'Has ?:', firstLine.includes('?'));
+  
   if (firstLine.length < 100 && !firstLine.includes('?') && !/^\d+\./.test(firstLine)) {
     roundName = firstLine;
+    console.log('Extracted round name:', roundName);
     allText.shift(); // Remove round name from processing
   }
   
@@ -355,10 +361,13 @@ function parseNumberedQuestions(content: any[]): any[] {
     const line = allText[i].trim();
     if (!line) continue;
     
+    console.log(`Processing line ${i}:`, line.substring(0, 50) + '...', 'Has ?:', line.includes('?'), 'Current Q:', currentQuestion ? 'Yes' : 'No');
+    
     // Check if line contains a question mark (likely a question)
     if (line.includes('?')) {
       // If we have a previous question without an answer, save it with empty answer
       if (currentQuestion) {
+        console.log('Saving previous question without answer:', currentQuestion.substring(0, 50));
         rows.push({
           question: currentQuestion.trim(),
           answer: '',
@@ -373,6 +382,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         // Question and answer on same line
         const question = questionMatch[2].trim();
         const answer = questionMatch[3].trim();
+        console.log('Found Q&A on same line:', question.substring(0, 30), '->', answer);
         rows.push({
           question: question,
           answer: answer,
@@ -382,11 +392,13 @@ function parseNumberedQuestions(content: any[]): any[] {
       } else {
         // Just question, answer should be on next line
         currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
+        console.log('Found question, waiting for answer:', currentQuestion.substring(0, 50));
       }
     } else {
       // Line without question mark - could be an answer or continuation
       if (currentQuestion) {
         // This is the answer to the previous question
+        console.log('Found answer for question:', currentQuestion.substring(0, 30), '->', line);
         rows.push({
           question: currentQuestion.trim(),
           answer: line,
@@ -396,12 +408,14 @@ function parseNumberedQuestions(content: any[]): any[] {
       } else {
         // No current question - this might be a standalone answer or continuation
         // Skip it for now (could be handled differently if needed)
+        console.log('Skipping line without question:', line.substring(0, 30));
       }
     }
   }
   
   // Add last question if it exists (even without answer)
   if (currentQuestion) {
+    console.log('Saving final question without answer:', currentQuestion.substring(0, 50));
     rows.push({
       question: currentQuestion.trim(),
       answer: '',
@@ -409,6 +423,7 @@ function parseNumberedQuestions(content: any[]): any[] {
     });
   }
   
+  console.log('Final parsed rows:', rows.length);
   return rows;
 }
 
