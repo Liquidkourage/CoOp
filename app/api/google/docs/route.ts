@@ -480,17 +480,44 @@ function parseNumberedQuestions(content: any[]): any[] {
   }
   
   // Filter out any rows where question matches the round name (safety check)
+  // Also filter out rows where question starts with the round name (in case of variations)
   const filteredRows = rows.filter(row => {
-    if (roundName && row.question && row.question.trim() === roundName.trim()) {
-      console.log('⚠️ Filtering out row that matches round name:', row.question);
+    if (!row.question) return true;
+    
+    const questionText = row.question.trim();
+    
+    // Exact match
+    if (roundName && questionText === roundName.trim()) {
+      console.log('⚠️ Filtering out row (exact match):', questionText);
       return false;
     }
+    
+    // Starts with round name (case-insensitive)
+    if (roundName && questionText.toLowerCase().startsWith(roundName.toLowerCase().trim())) {
+      console.log('⚠️ Filtering out row (starts with round name):', questionText);
+      return false;
+    }
+    
+    // Also check if question is suspiciously short and matches round name pattern
+    if (roundName && questionText.length < 100 && 
+        !questionText.includes('?') && 
+        questionText.toLowerCase() === roundName.toLowerCase().trim()) {
+      console.log('⚠️ Filtering out row (short, no ?, matches round name):', questionText);
+      return false;
+    }
+    
     return true;
   });
   
-  console.log(`Final parsed rows: ${filteredRows.length} (${rows.length} before filtering)`);
+  console.log(`📊 Final parsed rows: ${filteredRows.length} (${rows.length} before filtering)`);
   if (roundName) {
-    console.log(`Round name: "${roundName}"`);
+    console.log(`📊 Round name: "${roundName}"`);
+    console.log(`📊 Checking if any rows still contain round name...`);
+    filteredRows.forEach((row, idx) => {
+      if (row.question && row.question.includes(roundName)) {
+        console.log(`⚠️ Row ${idx} still contains round name:`, row.question.substring(0, 50));
+      }
+    });
   }
   
   return filteredRows;
