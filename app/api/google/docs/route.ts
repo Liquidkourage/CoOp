@@ -383,8 +383,11 @@ function parseNumberedQuestions(content: any[]): any[] {
     console.log('Extracted round name:', roundName);
     allText.shift(); // Remove round name from processing
     console.log('Remaining lines after removing round name:', allText.length);
+    console.log('First remaining line:', allText[0]?.substring(0, 50));
   } else {
     console.log('First line does not look like round name, will process normally');
+    console.log('First line details - length:', firstLine.length, 'has question words:', 
+                firstLine.toLowerCase().match(/\b(what|who|when|where|why|how)\b/));
   }
   
   // Process remaining lines - look for question-answer pairs
