@@ -3,16 +3,22 @@ import { google } from 'googleapis';
 
 export const dynamic = 'force-dynamic';
 
-function getOAuth2Client(accessToken: string) {
+function getOAuth2Client(accessToken: string, refreshToken?: string) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/google/callback`
   );
   
-  oauth2Client.setCredentials({
+  const credentials: any = {
     access_token: accessToken
-  });
+  };
+  
+  if (refreshToken) {
+    credentials.refresh_token = refreshToken;
+  }
+  
+  oauth2Client.setCredentials(credentials);
   
   return oauth2Client;
 }
@@ -223,7 +229,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { documentId, accessToken } = await request.json();
+    const { documentId, accessToken, refreshToken } = await request.json();
     
     if (!documentId || !accessToken) {
       return NextResponse.json(
@@ -241,7 +247,16 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const oauth2Client = getOAuth2Client(accessToken);
+    const oauth2Client = getOAuth2Client(accessToken, refreshToken);
+    
+    // Try to refresh token if it's expired
+    try {
+      await oauth2Client.getAccessToken();
+    } catch (refreshError: any) {
+      console.error('Token refresh error:', refreshError);
+      // Continue anyway - the API call might still work
+    }
+    
     const docs = google.docs({ version: 'v1', auth: oauth2Client });
     
     const response = await docs.documents.get({
@@ -250,38 +265,69 @@ export async function POST(request: NextRequest) {
     
     const parsedData = parseGoogleDocContent(response.data);
     
-    return NextResponse.json({
+    // Get updated tokens if they were refreshed
+    const credentials = oauth2Client.credentials;
+    const responseData: any = {
       success: true,
       data: parsedData,
       documentTitle: response.data.title || 'Untitled Document'
-    });
+    };
+    
+    // Return new access token if it was refreshed
+    if (credentials.access_token && credentials.access_token !== accessToken) {
+      responseData.newAccessToken = credentials.access_token;
+    }
+    
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Error fetching Google Doc:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      response: error.response?.data
+    });
     
     // Provide more specific error messages
-    if (error.code === 401 || error.message?.includes('Invalid Credentials')) {
+    if (error.code === 401 || error.message?.includes('Invalid Credentials') || error.message?.includes('invalid_grant')) {
       return NextResponse.json(
-        { error: 'Authentication failed. Please re-authenticate with Google.', details: error.message },
+        { 
+          error: 'Authentication failed. Please re-authenticate with Google.', 
+          details: error.message,
+          code: error.code,
+          requiresReauth: true
+        },
         { status: 401 }
       );
     }
     
-    if (error.code === 403 || error.message?.includes('Permission denied')) {
+    if (error.code === 403 || error.message?.includes('Permission denied') || error.message?.includes('insufficient permissions')) {
       return NextResponse.json(
-        { error: 'Permission denied. Make sure the document is shared with your Google account.', details: error.message },
+        { 
+          error: 'Permission denied. Make sure the document is shared with your Google account and you have granted access to Google Docs.', 
+          details: error.message,
+          code: error.code
+        },
         { status: 403 }
       );
     }
     
     if (error.code === 404 || error.message?.includes('not found')) {
       return NextResponse.json(
-        { error: 'Document not found. Check the document ID and ensure the document exists.', details: error.message },
+        { 
+          error: 'Document not found. Check the document ID and ensure the document exists.', 
+          details: error.message,
+          code: error.code
+        },
         { status: 404 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch Google Doc', details: error.message || 'Unknown error' },
+      { 
+        error: 'Failed to fetch Google Doc', 
+        details: error.message || 'Unknown error',
+        code: error.code
+      },
       { status: 500 }
     );
   }

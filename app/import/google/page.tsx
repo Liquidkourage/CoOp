@@ -183,6 +183,7 @@ function GoogleDocsImportPageContent() {
   const searchParams = useSearchParams();
   const [documentId, setDocumentId] = useState('');
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -206,15 +207,20 @@ function GoogleDocsImportPageContent() {
       setAccessToken(token);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('google_access_token', token);
-        const refreshToken = searchParams.get('refresh_token');
-        if (refreshToken) {
-          sessionStorage.setItem('google_refresh_token', refreshToken);
+        const refreshTokenParam = searchParams.get('refresh_token');
+        if (refreshTokenParam) {
+          setRefreshToken(refreshTokenParam);
+          sessionStorage.setItem('google_refresh_token', refreshTokenParam);
         }
       }
     } else if (typeof window !== 'undefined') {
       const storedToken = sessionStorage.getItem('google_access_token');
+      const storedRefreshToken = sessionStorage.getItem('google_refresh_token');
       if (storedToken) {
         setAccessToken(storedToken);
+      }
+      if (storedRefreshToken) {
+        setRefreshToken(storedRefreshToken);
       }
     }
   }, [searchParams]);
