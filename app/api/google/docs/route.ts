@@ -438,57 +438,26 @@ function parseNumberedQuestions(content: any[]): any[] {
   
   processContent(content);
   
-  console.log('All extracted text lines:', allText);
-  console.log('Total lines:', allText.length);
+  console.log('📝 All extracted text lines:', allText.length);
+  if (allText.length > 0) {
+    console.log('📝 First 5 lines:', allText.slice(0, 5).map((l, i) => `${i}: "${l.substring(0, 60)}"`));
+  }
   
   if (allText.length === 0) {
     return rows;
   }
   
-  // First line might be the round name (if it's short and doesn't look like a question)
-  // Be VERY aggressive - if first line is short (< 100 chars) and has no "?", treat as round name
+  // First line is likely the round name if it's short and doesn't have a question mark
   const firstLine = allText[0].trim();
-  console.log('🔍 First line analysis:', {
-    text: firstLine,
-    length: firstLine.length,
-    hasQuestionMark: firstLine.includes('?'),
-    isNumbered: /^\d+\./.test(firstLine),
-    hasQuestionWords: /\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(firstLine),
-    endsWithQuestionMark: firstLine.endsWith('?')
-  });
+  const isRoundName = firstLine.length < 100 && 
+                      !firstLine.includes('?') && 
+                      !/^\d+\./.test(firstLine) &&
+                      !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(firstLine);
   
-  // Check if first line looks like a round name
-  // Criteria: short, no question mark, not numbered, doesn't start with question words
-  const isShort = firstLine.length < 100;
-  const hasNoQuestionMark = !firstLine.includes('?');
-  const isNotNumbered = !/^\d+\./.test(firstLine);
-  const hasNoQuestionWords = !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(firstLine);
-  const looksLikeRoundName = isShort && hasNoQuestionMark && isNotNumbered && hasNoQuestionWords;
-  
-  console.log('🔍 Round name detection:', {
-    isShort,
-    hasNoQuestionMark,
-    isNotNumbered,
-    hasNoQuestionWords,
-    looksLikeRoundName
-  });
-  
-  if (looksLikeRoundName) {
+  if (isRoundName) {
     roundName = firstLine;
-    console.log('✅ Extracted round name:', roundName);
-    allText.shift(); // Remove round name from processing
-    console.log('✅ Remaining lines after removing round name:', allText.length);
-    if (allText.length > 0) {
-      console.log('✅ First remaining line:', allText[0].substring(0, 80));
-    }
-  } else {
-    console.log('❌ First line does NOT look like round name - will process as regular line');
-    console.log('❌ Reason:', {
-      isShort: isShort ? '✓' : '✗ (too long)',
-      hasNoQuestionMark: hasNoQuestionMark ? '✓' : '✗ (has ?)',
-      isNotNumbered: isNotNumbered ? '✓' : '✗ (numbered)',
-      hasNoQuestionWords: hasNoQuestionWords ? '✓' : '✗ (has question words)'
-    });
+    console.log('✅ Round name:', roundName);
+    allText.shift(); // Remove from processing
   }
   
   // Process remaining lines - look for question-answer pairs
