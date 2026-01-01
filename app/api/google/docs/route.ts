@@ -307,8 +307,8 @@ function parseNumberedQuestions(content: any[]): any[] {
   let roundName = '';
   const allText: string[] = [];
   
-  // First, extract all text from paragraphs
-  function extractAllText(node: any): string {
+  // Extract text from each paragraph separately (preserve paragraph boundaries)
+  function extractParagraphText(node: any): string {
     let text = '';
     
     if (node.paragraph) {
@@ -321,21 +321,39 @@ function parseNumberedQuestions(content: any[]): any[] {
       }
     }
     
-    if (node.content) {
-      node.content.forEach((child: any) => {
-        text += extractAllText(child);
-      });
-    }
-    
     return text;
   }
   
-  content.forEach(node => {
-    const text = extractAllText(node).trim();
-    if (text) {
-      allText.push(text);
-    }
-  });
+  // Process content to extract each paragraph as a separate line
+  function processContent(nodes: any[]) {
+    nodes.forEach(node => {
+      if (node.paragraph) {
+        const text = extractParagraphText(node).trim();
+        if (text) {
+          allText.push(text);
+        }
+      }
+      
+      // Recursively process nested content
+      if (node.content) {
+        processContent(node.content);
+      }
+      
+      // Also check for nested elements
+      if (node.elements) {
+        node.elements.forEach((elem: any) => {
+          if (elem.paragraph) {
+            const text = extractParagraphText(elem).trim();
+            if (text) {
+              allText.push(text);
+            }
+          }
+        });
+      }
+    });
+  }
+  
+  processContent(content);
   
   console.log('All extracted text lines:', allText);
   console.log('Total lines:', allText.length);
