@@ -211,6 +211,16 @@ function parseTextContent(content: any[]): any[] {
   return rows;
 }
 
+export async function GET() {
+  return NextResponse.json(
+    { 
+      error: 'This endpoint only accepts POST requests',
+      message: 'Please use the Google Docs import page at /import/google to fetch documents'
+    },
+    { status: 405 }
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { documentId, accessToken } = await request.json();
@@ -219,6 +229,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Document ID and access token are required' },
         { status: 400 }
+      );
+    }
+    
+    // Validate environment variables
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      console.error('Missing Google OAuth credentials');
+      return NextResponse.json(
+        { error: 'Server configuration error: Google OAuth credentials not configured' },
+        { status: 500 }
       );
     }
     
@@ -238,8 +257,31 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching Google Doc:', error);
+    
+    // Provide more specific error messages
+    if (error.code === 401 || error.message?.includes('Invalid Credentials')) {
+      return NextResponse.json(
+        { error: 'Authentication failed. Please re-authenticate with Google.', details: error.message },
+        { status: 401 }
+      );
+    }
+    
+    if (error.code === 403 || error.message?.includes('Permission denied')) {
+      return NextResponse.json(
+        { error: 'Permission denied. Make sure the document is shared with your Google account.', details: error.message },
+        { status: 403 }
+      );
+    }
+    
+    if (error.code === 404 || error.message?.includes('not found')) {
+      return NextResponse.json(
+        { error: 'Document not found. Check the document ID and ensure the document exists.', details: error.message },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch Google Doc', details: error.message },
+      { error: 'Failed to fetch Google Doc', details: error.message || 'Unknown error' },
       { status: 500 }
     );
   }
