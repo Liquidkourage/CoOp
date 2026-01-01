@@ -235,6 +235,64 @@ function parseTextContent(content: any[]): any[] {
   return rows;
 }
 
+// Parse paragraphs - treat each paragraph as a potential question/answer pair
+function parseParagraphs(content: any[]): any[] {
+  const rows: any[] = [];
+  const paragraphs: string[] = [];
+  
+  function extractParagraphText(node: any): string {
+    let text = '';
+    
+    if (node.paragraph) {
+      if (node.paragraph.elements) {
+        node.paragraph.elements.forEach((elem: any) => {
+          if (elem.textRun) {
+            text += elem.textRun.content || '';
+          }
+        });
+      }
+    }
+    
+    if (node.content) {
+      node.content.forEach((child: any) => {
+        text += extractParagraphText(child);
+      });
+    }
+    
+    return text;
+  }
+  
+  content.forEach(node => {
+    const text = extractParagraphText(node).trim();
+    if (text) {
+      paragraphs.push(text);
+    }
+  });
+  
+  // Try to pair paragraphs as Q&A
+  for (let i = 0; i < paragraphs.length; i += 2) {
+    const question = paragraphs[i];
+    const answer = paragraphs[i + 1] || '';
+    
+    if (question) {
+      rows.push({
+        question: question,
+        answer: answer
+      });
+    }
+  }
+  
+  // If we have an odd number, add the last one as a question
+  if (paragraphs.length % 2 === 1 && paragraphs.length > 0) {
+    rows.push({
+      question: paragraphs[paragraphs.length - 1],
+      answer: ''
+    });
+  }
+  
+  return rows;
+}
+
 export async function GET() {
   return NextResponse.json(
     { 
