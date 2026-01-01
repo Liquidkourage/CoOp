@@ -71,7 +71,31 @@ function parseGoogleDocContent(doc: any): any[] {
     rows.push(...numberedRows);
   }
   
-  return rows;
+  // Final safety check: Remove any rows where the question looks like a round name
+  // (short, no question mark, doesn't start with question words)
+  const filteredRows = rows.filter(row => {
+    if (!row.question) return true;
+    
+    const questionText = row.question.trim();
+    
+    // Skip rows where question is suspiciously round-name-like
+    // (short, no question mark, no question words, not numbered)
+    const isShort = questionText.length < 100;
+    const hasNoQuestionMark = !questionText.includes('?');
+    const isNotNumbered = !/^\d+\./.test(questionText);
+    const hasNoQuestionWords = !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(questionText);
+    
+    if (isShort && hasNoQuestionMark && isNotNumbered && hasNoQuestionWords) {
+      console.log('⚠️ Filtering out row that looks like round name:', questionText);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log(`📊 Final result: ${filteredRows.length} rows (${rows.length} before final filter)`);
+  
+  return filteredRows;
 }
 
 function extractTables(content: any[]): any[] {
