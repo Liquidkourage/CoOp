@@ -436,11 +436,25 @@ function parseNumberedQuestions(content: any[]): any[] {
   // Pattern: Question (has ?) followed by Answer (no ?, usually short)
   let currentQuestion = '';
   
+  console.log('📝 Starting to process', allText.length, 'lines for Q&A pairs');
+  console.log('📝 First 10 lines preview:', allText.slice(0, 10).map((l, idx) => `${idx}: "${l.substring(0, 60)}${l.length > 60 ? '...' : ''}"`));
+  
   for (let i = 0; i < allText.length; i++) {
     const line = allText[i].trim();
-    if (!line) continue;
+    if (!line) {
+      console.log(`⏭️ Skipping empty line ${i}`);
+      continue;
+    }
     
-    console.log(`Processing line ${i}:`, line.substring(0, 80), 'Has ?:', line.includes('?'), 'Length:', line.length);
+    const nextLine = i < allText.length - 1 ? allText[i + 1]?.trim() : null;
+    
+    console.log(`📄 [${i}/${allText.length - 1}] Current line:`, {
+      text: line.substring(0, 100),
+      hasQuestionMark: line.includes('?'),
+      length: line.length,
+      currentQuestionWaiting: currentQuestion ? `"${currentQuestion.substring(0, 50)}"` : 'None',
+      nextLinePreview: nextLine ? `"${nextLine.substring(0, 50)}"` : 'None'
+    });
     
     // Check if line contains a question mark (likely a question)
     if (line.includes('?')) {
