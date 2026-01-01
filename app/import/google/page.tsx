@@ -345,7 +345,25 @@ function GoogleDocsImportPageContent() {
       const data = await response.json();
       
       if (!response.ok) {
+        // If authentication failed, clear tokens and prompt re-auth
+        if (data.requiresReauth) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('google_access_token');
+            sessionStorage.removeItem('google_refresh_token');
+          }
+          setAccessToken(null);
+          setRefreshToken(null);
+          setError(`${data.error}. Please click "Sign in with Google" again.`);
+          setLoading(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to fetch document');
+      }
+      
+      // Update access token if it was refreshed
+      if (data.newAccessToken && typeof window !== 'undefined') {
+        setAccessToken(data.newAccessToken);
+        sessionStorage.setItem('google_access_token', data.newAccessToken);
       }
       
       const rows = data.data || [];
