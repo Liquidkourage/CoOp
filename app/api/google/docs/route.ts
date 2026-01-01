@@ -75,7 +75,7 @@ function parseGoogleDocContent(doc: any): any[] {
   // User can manually pair them in the UI
   if (rows.length === 0) {
     console.log('All parsing methods failed, falling back to simple line extraction');
-    const simpleRows = extractAllTextLines(doc.body.content);
+    const simpleRows = extractAllTextLinesSimple(doc.body.content);
     console.log(`Simple extraction found ${simpleRows.length} lines`);
     // Return as raw lines - user will manually pair them
     return simpleRows.map((line, idx) => ({
