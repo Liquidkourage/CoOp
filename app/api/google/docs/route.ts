@@ -341,6 +341,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         node.paragraph.elements.forEach((elem: any) => {
           if (elem.textRun) {
             const content = elem.textRun.content || '';
+            
             // Split on vertical tab (often used to separate Q&A in same paragraph)
             if (content.includes('\u000b')) {
               const parts = content.split('\u000b');
@@ -353,9 +354,18 @@ function parseNumberedQuestions(content: any[]): any[] {
                 currentLine = '';
               }
               // Last part (after last vertical tab) becomes new current line
+              // (this handles the case where answer is in next textRun)
               currentLine = parts[parts.length - 1];
             } else {
-              currentLine += content;
+              // No vertical tab - add to current line
+              // But if current line was just finished (ends with ?), start a new line
+              if (currentLine.trim().endsWith('?') && content.trim()) {
+                // Previous line was a question, this is likely the answer
+                lines.push(currentLine.trim());
+                currentLine = content;
+              } else {
+                currentLine += content;
+              }
             }
           }
         });
