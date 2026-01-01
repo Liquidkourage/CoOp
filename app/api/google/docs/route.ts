@@ -373,19 +373,20 @@ function parseNumberedQuestions(content: any[]): any[] {
   }
   
   // Process remaining lines - look for question-answer pairs
+  // Pattern: Question (has ?) followed by Answer (no ?, usually short)
   let currentQuestion = '';
   
   for (let i = 0; i < allText.length; i++) {
     const line = allText[i].trim();
     if (!line) continue;
     
-    console.log(`Processing line ${i}:`, line.substring(0, 50) + '...', 'Has ?:', line.includes('?'), 'Current Q:', currentQuestion ? 'Yes' : 'No');
+    console.log(`Processing line ${i}:`, line.substring(0, 80), 'Has ?:', line.includes('?'), 'Length:', line.length);
     
     // Check if line contains a question mark (likely a question)
     if (line.includes('?')) {
       // If we have a previous question without an answer, save it with empty answer
       if (currentQuestion) {
-        console.log('Saving previous question without answer:', currentQuestion.substring(0, 50));
+        console.log('Previous question had no answer, saving with empty answer');
         rows.push({
           question: currentQuestion.trim(),
           answer: '',
@@ -400,7 +401,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         // Question and answer on same line
         const question = questionMatch[2].trim();
         const answer = questionMatch[3].trim();
-        console.log('Found Q&A on same line:', question.substring(0, 30), '->', answer);
+        console.log('Found Q&A on same line');
         rows.push({
           question: question,
           answer: answer,
@@ -410,13 +411,13 @@ function parseNumberedQuestions(content: any[]): any[] {
       } else {
         // Just question, answer should be on next line
         currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
-        console.log('Found question, waiting for answer:', currentQuestion.substring(0, 50));
+        console.log('Found question, waiting for answer on next line');
       }
     } else {
-      // Line without question mark - could be an answer or continuation
+      // Line without question mark
       if (currentQuestion) {
-        // This is the answer to the previous question
-        console.log('Found answer for question:', currentQuestion.substring(0, 30), '->', line);
+        // We have a question waiting - this line is the answer
+        console.log('Found answer for waiting question');
         rows.push({
           question: currentQuestion.trim(),
           answer: line,
@@ -424,16 +425,17 @@ function parseNumberedQuestions(content: any[]): any[] {
         });
         currentQuestion = ''; // Clear since we've saved this pair
       } else {
-        // No current question - this might be a standalone answer or continuation
-        // Skip it for now (could be handled differently if needed)
-        console.log('Skipping line without question:', line.substring(0, 30));
+        // No current question - this might be:
+        // 1. A standalone answer (skip - can't pair without question)
+        // 2. Part of a new round/section (skip for now)
+        console.log('Skipping line - no question waiting:', line.substring(0, 50));
       }
     }
   }
   
   // Add last question if it exists (even without answer)
   if (currentQuestion) {
-    console.log('Saving final question without answer:', currentQuestion.substring(0, 50));
+    console.log('Saving final question without answer');
     rows.push({
       question: currentQuestion.trim(),
       answer: '',
