@@ -23,6 +23,44 @@ function getOAuth2Client(accessToken: string, refreshToken?: string) {
   return oauth2Client;
 }
 
+// Simple fallback: Extract all text lines as-is
+function extractAllTextLinesSimple(content: any[]): string[] {
+  const lines: string[] = [];
+  
+  function extractText(node: any): string {
+    let text = '';
+    
+    if (node.paragraph) {
+      if (node.paragraph.elements) {
+        node.paragraph.elements.forEach((elem: any) => {
+          if (elem.textRun) {
+            text += elem.textRun.content || '';
+          }
+        });
+      }
+    }
+    
+    if (node.content) {
+      node.content.forEach((child: any) => {
+        text += extractText(child);
+      });
+    }
+    
+    return text;
+  }
+  
+  content.forEach(node => {
+    const text = extractText(node).trim();
+    if (text) {
+      // Split on newlines to get individual lines
+      const splitLines = text.split('\n').map(l => l.trim()).filter(l => l);
+      lines.push(...splitLines);
+    }
+  });
+  
+  return lines;
+}
+
 // Parse Google Docs content into structured data
 function parseGoogleDocContent(doc: any): any[] {
   const rows: any[] = [];
