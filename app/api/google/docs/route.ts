@@ -556,7 +556,7 @@ function parseNumberedQuestions(content: any[]): any[] {
     console.log('✅ Round name:', roundName);
     
     // Check if this is an audio/visual round - skip it
-    const isAudioVisual = /\b(audio|visual|AV|A\/V|sound|video|listen|watch|hear|see)\b/i.test(roundName);
+    const isAudioVisual = /\b(audio|visual|AV|A\/V|sound|video|listen|watch|hear|see|discontinued|discontinue)\b/i.test(roundName);
     if (isAudioVisual) {
       console.log('⏭️ Skipping audio/visual round:', roundName);
       return []; // Return empty array - skip this round entirely
