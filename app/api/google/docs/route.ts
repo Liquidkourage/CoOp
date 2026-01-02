@@ -557,6 +557,25 @@ function parseNumberedQuestions(content: any[]): any[] {
     console.log('⚠️ First line does not look like round name:', firstLine.substring(0, 50));
   }
   
+  // Check if this is a matching/pairing round (A → B format)
+  // Look for patterns like "A → B", "A/B", "match", "pair", or check if round name suggests matching
+  const isMatchingRound = roundName && (
+    /\b(match|pair|matching|pairing|A\s*→\s*B|A\s*\/\s*B|given\s+A|presented\s+with\s+A)\b/i.test(roundName) ||
+    /→/.test(roundName)
+  );
+  
+  // Also check first few lines for matching patterns
+  const hasMatchingPattern = allText.slice(0, 5).some(line => 
+    /→/.test(line) || /^[A-Z]:\s/.test(line.trim()) || /\b[A-Z]\s*→\s*[A-Z]\b/i.test(line)
+  );
+  
+  const useMatchingFormat = isMatchingRound || hasMatchingPattern;
+  
+  if (useMatchingFormat) {
+    console.log('🔗 Detected matching/pairing round format (A → B)');
+    return parseMatchingFormat(allText, roundName);
+  }
+  
   // Process remaining lines - look for question-answer pairs
   // Pattern: Question (has ?) followed by Answer (no ?, usually short)
   let currentQuestion = '';
