@@ -766,7 +766,142 @@ function GoogleDocsImportPageContent() {
         </div>
       )}
       
-      {parsedData.length > 0 && mappings.length > 0 && (
+      {editableRows.length > 0 && (
+        <div style={{ marginTop: '30px' }}>
+          <h2>Step 4.5: Review & Edit Questions</h2>
+          <p style={{ color: '#666', marginBottom: '15px' }}>
+            Review and edit the parsed questions. You can add, remove, or modify any question/answer pairs.
+          </p>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+              Round Name (optional):
+            </label>
+            <input
+              type="text"
+              value={roundName}
+              onChange={(e) => setRoundName(e.target.value)}
+              placeholder="e.g., Newspaper Comic Strips"
+              style={{
+                width: '100%',
+                maxWidth: '400px',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '16px'
+              }}
+            />
+          </div>
+          
+          <div style={{
+            background: '#fff',
+            border: '1px solid #dee2e6',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            maxHeight: '600px',
+            overflowY: 'auto'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8f9fa', position: 'sticky', top: 0 }}>
+                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '5%' }}>#</th>
+                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '45%' }}>Question</th>
+                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '45%' }}>Answer</th>
+                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '5%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editableRows.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #dee2e6' }}>
+                    <td style={{ padding: '12px', color: '#666' }}>{idx + 1}</td>
+                    <td style={{ padding: '12px' }}>
+                      <textarea
+                        value={row.question}
+                        onChange={(e) => {
+                          const updated = [...editableRows];
+                          updated[idx].question = e.target.value;
+                          setEditableRows(updated);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          minHeight: '60px',
+                          resize: 'vertical'
+                        }}
+                        placeholder="Enter question..."
+                      />
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <textarea
+                        value={row.answer}
+                        onChange={(e) => {
+                          const updated = [...editableRows];
+                          updated[idx].answer = e.target.value;
+                          setEditableRows(updated);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          minHeight: '60px',
+                          resize: 'vertical'
+                        }}
+                        placeholder="Enter answer..."
+                      />
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => {
+                          const updated = editableRows.filter((_, i) => i !== idx);
+                          setEditableRows(updated);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div style={{ marginTop: '15px' }}>
+            <button
+              onClick={() => {
+                setEditableRows([...editableRows, { question: '', answer: '', round: roundName }]);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              + Add Question
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {(editableRows.length > 0 || parsedData.length > 0) && mappings.length > 0 && (
         <div style={{ marginTop: '30px' }}>
           <h2>Step 5: Import</h2>
           
