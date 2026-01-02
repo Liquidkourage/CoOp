@@ -529,25 +529,29 @@ function parseNumberedQuestions(content: any[]): any[] {
         currentQuestion = ''; // Clear it
       }
       
-      // Try to split question and answer on the same line
-      // Pattern: "Question text? Answer" or "1. Question text? Answer"
-      const questionMatch = line.match(/^(\d+\.\s*)?(.+?\?)\s*(.+)$/);
-      if (questionMatch && questionMatch[3].trim().length > 0) {
-        // Question and answer on same line
-        const question = questionMatch[2].trim();
-        const answer = questionMatch[3].trim();
-        console.log('✅ Found Q&A on same line');
-        rows.push({
-          question: question,
-          answer: answer,
-          round: roundName || undefined
-        });
-        currentQuestion = ''; // Clear since we've saved this pair
+      // If it has a question mark, try to split question and answer on the same line
+      if (hasQuestionMark) {
+        const questionMatch = line.match(/^(\d+\.\s*)?(.+?\?)\s*(.+)$/);
+        if (questionMatch && questionMatch[3].trim().length > 0) {
+          // Question and answer on same line
+          const question = questionMatch[2].trim();
+          const answer = questionMatch[3].trim();
+          console.log('✅ Found Q&A on same line');
+          rows.push({
+            question: question,
+            answer: answer,
+            round: roundName || undefined
+          });
+          currentQuestion = ''; // Clear since we've saved this pair
+        } else {
+          // Just question, answer should be on next line
+          currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
+          console.log('📝 Found question (with ?), waiting for answer on next line:', currentQuestion.substring(0, 60));
+        }
       } else {
-        // Just question, answer should be on next line
-        // Remove numbering prefix if present
+        // FitB or long format question without "?" - answer should be on next line
         currentQuestion = line.replace(/^\d+\.\s*/, '').trim();
-        console.log('📝 Found question, waiting for answer on next line:', currentQuestion.substring(0, 60));
+        console.log('📝 Found question (FitB/long format), waiting for answer on next line:', currentQuestion.substring(0, 60));
       }
     } else {
       // Line without question mark - could be an answer or a question in a different format
