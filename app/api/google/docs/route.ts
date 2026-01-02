@@ -625,8 +625,18 @@ function parseNumberedQuestions(content: any[]): any[] {
       console.log('🔗 Detected film/subtitle round mid-document:', line);
       matchingModeStartIndex = i;
       currentRoundName = line;
-      // Process everything before this as regular Q&A, then switch to matching
-      break; // We'll handle this after the loop
+      // Save any pending question first
+      if (currentQuestion) {
+        console.log('⚠️ Saving pending question before switching to matching mode');
+        rows.push({
+          question: currentQuestion.trim(),
+          answer: '',
+          round: roundName || undefined
+        });
+        currentQuestion = '';
+      }
+      // Continue processing - we'll handle matching format after the loop
+      continue; // Skip this line (it's the round name)
     }
     
     // Check if line is a question:
