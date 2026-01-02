@@ -715,7 +715,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         rows.push({
           question: currentQuestion.trim(),
           answer: '',
-          round: roundName || undefined
+          round: currentRoundName || undefined
         });
         currentQuestion = ''; // Clear it
       }
@@ -731,7 +731,7 @@ function parseNumberedQuestions(content: any[]): any[] {
           rows.push({
             question: question,
             answer: answer,
-            round: roundName || undefined
+            round: currentRoundName || undefined
           });
           currentQuestion = ''; // Clear since we've saved this pair
         } else {
@@ -760,7 +760,7 @@ function parseNumberedQuestions(content: any[]): any[] {
           rows.push({
             question: currentQuestion.trim(),
             answer: '',
-            round: roundName || undefined
+            round: currentRoundName || undefined
           });
           currentQuestion = '';
         }
@@ -773,7 +773,7 @@ function parseNumberedQuestions(content: any[]): any[] {
         rows.push({
           question: currentQuestion.trim(),
           answer: line.trim(),
-          round: roundName || undefined
+          round: currentRoundName || undefined
         });
         currentQuestion = ''; // Clear since we've saved this pair
       } else {
