@@ -551,7 +551,7 @@ function GoogleDocsImportPageContent() {
       }
     }
     
-    setProgress({ current: parsedData.length, total: parsedData.length, imported, errors });
+    setProgress({ current: rowsToImport.length, total: rowsToImport.length, imported, errors });
     setImporting(false);
     
     if (errors === 0) {
