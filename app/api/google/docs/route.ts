@@ -677,7 +677,28 @@ function parseNumberedQuestions(content: any[]): any[] {
         console.log('📝 Found question (FitB/long format), waiting for answer on next line:', currentQuestion.substring(0, 60));
       }
     } else {
-      // Line without question mark - could be an answer or a question in a different format
+      // Line without question mark - could be an answer, a new round name, or a question in a different format
+      
+      // Check if this is a new round name (film/subtitle round)
+      const isFilmRoundName = /\b(name\s+the.*film|film.*sequel|film.*subtitle|subtitle.*film)\b/i.test(line);
+      if (isFilmRoundName && matchingModeStartIndex === -1) {
+        // Found a film round - switch to matching mode from this point
+        console.log('🔗 Detected film/subtitle round mid-document:', line);
+        matchingModeStartIndex = i;
+        currentRoundName = line;
+        // Save any pending question first
+        if (currentQuestion) {
+          console.log('⚠️ Saving pending question before switching to matching mode');
+          rows.push({
+            question: currentQuestion.trim(),
+            answer: '',
+            round: roundName || undefined
+          });
+          currentQuestion = '';
+        }
+        continue; // Skip this line (it's the round name)
+      }
+      
       if (currentQuestion) {
         // We have a question waiting - this line is the answer
         console.log('✅ Found answer for waiting question');
