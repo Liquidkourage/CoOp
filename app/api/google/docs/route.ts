@@ -398,15 +398,33 @@ function parseNumberedQuestions(content: any[]): any[] {
           const content = elem.textRun.content || '';
           
           // Split on vertical tab - this separates Q&A in Google Docs
+          // But only split if the vertical tab comes after a question mark (complete question)
           if (content.includes('\u000b')) {
             const parts = content.split('\u000b');
-            // Everything before the vertical tab completes current line
+            
+            // Add everything before the vertical tab to current line
             currentLine += parts[0];
-            if (currentLine.trim()) {
-              lines.push(currentLine.trim());
+            
+            // If current line ends with '?' (complete question), push it and start new line
+            if (currentLine.trim().endsWith('?')) {
+              if (currentLine.trim()) {
+                lines.push(currentLine.trim());
+              }
+              // Everything after the vertical tab starts new line (the answer)
+              currentLine = parts.slice(1).join('\u000b');
+            } else {
+              // Question isn't complete yet, keep building current line
+              // But if there are multiple parts, the first part completes the line
+              // and subsequent parts start new lines
+              if (parts.length > 1) {
+                // Push current line if it has content
+                if (currentLine.trim()) {
+                  lines.push(currentLine.trim());
+                }
+                // Start new line with remaining parts
+                currentLine = parts.slice(1).join('\u000b');
+              }
             }
-            // Everything after the vertical tab starts new line
-            currentLine = parts.slice(1).join('\u000b');
           } else {
             // No vertical tab - append to current line
             currentLine += content;
