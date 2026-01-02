@@ -620,12 +620,22 @@ function parseNumberedQuestions(content: any[]): any[] {
     
     // Check if this line is a new round name (appears mid-document)
     // Look for patterns like "Name the...", "FitB:", or other round indicators
+    // IMPORTANT: Don't treat answers as round names - answers are usually short and follow questions
     const looksLikeRoundName = line.length < 150 && 
                                !line.includes('?') && 
                                !/_{3,}/.test(line) &&
+                               // Must NOT be waiting for an answer (if we have a currentQuestion, this is likely an answer)
+                               !currentQuestion &&
                                (
+                                 // Explicit round patterns
                                  /^(name\s+the|fitb:|round|^[A-Z][^?]*$)/i.test(line) ||
-                                 (line.length < 100 && !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(line))
+                                 // Short lines that look like round names (but not answers)
+                                 (line.length < 100 && 
+                                  line.length > 10 && // Round names are usually longer than single-word answers
+                                  !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(line) &&
+                                  // Check if previous line was a question - if so, this is likely an answer, not a round
+                                  (i === 0 || !allText[i - 1]?.trim().includes('?'))
+                                 )
                                );
     
     // Check if this is an audio/visual round that should be skipped
