@@ -236,13 +236,31 @@ function ManualOrganizeContent() {
           const hasQuestionMark = line.text.includes('?');
           const hasFillInBlank = /_{3,}/.test(line.text);
           const isLong = line.text.length > 50;
+          const isShortPhrase = line.text.length < 100 && !line.text.includes('?');
           
-          if (hasQuestionMark || hasFillInBlank || isLong) {
+          // Check if we're in matching format mode (short phrase pairs)
+          const isMatchingFormat = patternStartIndex >= 0 && 
+            patternStartIndex + 1 < suggestions.length &&
+            suggestions[patternStartIndex].type === 'question' &&
+            suggestions[patternStartIndex + 1].type === 'answer';
+          
+          let matchingFormatDetected = false;
+          if (isMatchingFormat) {
+            const prevQuestion = suggestions[patternStartIndex].question || suggestions[patternStartIndex].text;
+            const prevAnswer = suggestions[patternStartIndex + 1].answer || suggestions[patternStartIndex + 1].text;
+            matchingFormatDetected = prevQuestion.length < 100 && prevAnswer.length < 100 &&
+              !prevQuestion.includes('?') && !prevAnswer.includes('?');
+          }
+          
+          if (hasQuestionMark || hasFillInBlank || isLong || (isShortPhrase && matchingFormatDetected)) {
             line.suggestion = {
               type: 'question',
-              confidence: hasQuestionMark ? 95 : hasFillInBlank ? 90 : 80,
+              confidence: hasQuestionMark ? 95 : 
+                         hasFillInBlank ? 90 : 
+                         matchingFormatDetected ? 85 : 80,
               reason: hasQuestionMark ? 'Expected question (contains ?)' : 
                       hasFillInBlank ? 'Expected question (fill-in-blank)' :
+                      matchingFormatDetected ? 'Expected question (matching format pattern)' :
                       'Expected question (pattern continuation)'
             };
             // Auto-assign round if available
@@ -281,6 +299,7 @@ function ManualOrganizeContent() {
     }
     
     // Also check for obvious patterns (question marks, etc.) even without established pattern
+    // AND check for matching format patterns (short phrase pairs)
     suggestions.forEach((line, idx) => {
       if (line.type !== 'unknown' || line.suggestion) {
         return; // Skip already classified or suggested lines
@@ -299,6 +318,51 @@ function ManualOrganizeContent() {
           confidence: 90,
           reason: 'Contains fill-in-the-blank pattern'
         };
+      } else {
+        // Check for matching format pattern: short phrase pairs
+        // Look backwards to see if there's a pattern of short phrase -> short phrase
+        let matchingPatternDetected = false;
+        let consecutivePairs = 0;
+        
+        // Check last 3-5 lines for a pattern
+        for (let i = Math.max(0, idx - 5); i < idx; i++) {
+          const prevLine = suggestions[i];
+          const nextLine = i + 1 < suggestions.length ? suggestions[i + 1] : null;
+          
+          // Check if we have a question-answer pair pattern
+          if (prevLine.type === 'question' && nextLine && nextLine.type === 'answer') {
+            const prevText = prevLine.question || prevLine.text;
+            const nextText = nextLine.answer || nextLine.text;
+            
+            // Both are short phrases (matching format)
+            if (prevText.length < 100 && nextText.length < 100 && 
+                !prevText.includes('?') && !nextText.includes('?')) {
+              consecutivePairs++;
+            } else {
+              consecutivePairs = 0; // Reset if pattern breaks
+            }
+          } else if (prevLine.type !== 'unknown' || (nextLine && nextLine.type !== 'unknown')) {
+            consecutivePairs = 0; // Reset if not a clean pair
+          }
+        }
+        
+        // If we have 2+ consecutive matching pairs, suggest this line as question
+        if (consecutivePairs >= 2) {
+          const isShortPhrase = line.text.length < 100 && !line.text.includes('?');
+          if (isShortPhrase) {
+            // Check if next line is also short (likely answer)
+            const nextLine = idx + 1 < suggestions.length ? suggestions[idx + 1] : null;
+            if (nextLine && nextLine.type === 'unknown' && 
+                nextLine.text.length < 100 && !nextLine.text.includes('?')) {
+              line.suggestion = {
+                type: 'question',
+                confidence: 85,
+                reason: 'Matching format pattern detected (short phrase pairs)'
+              };
+              matchingPatternDetected = true;
+            }
+          }
+        }
       }
     });
     
