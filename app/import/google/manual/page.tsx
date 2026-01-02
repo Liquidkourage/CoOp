@@ -84,15 +84,15 @@ function ManualOrganizeContent() {
       }
 
       // Extract raw text lines from the document
-      const lines = data.rawTextLines || (data.rawText ? data.rawText.split('\n').filter((l: string) => l.trim().length > 0) : []);
+      const lines: string[] = data.rawTextLines || (data.rawText ? data.rawText.split('\n').filter((l: string) => l.trim().length > 0) : []);
       
       setRawLines(lines);
       
       // Initialize organized data with all lines as 'unknown' type
-      const initialData: ParsedLine[] = lines.map((line, idx) => ({
+      const initialData: ParsedLine[] = lines.map((line: string, idx: number) => ({
         id: `line-${idx}`,
         text: line.trim(),
-        type: 'unknown',
+        type: 'unknown' as const,
       }));
       
       setOrganizedData(initialData);
