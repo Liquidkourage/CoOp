@@ -635,8 +635,14 @@ function parseNumberedQuestions(content: any[]): any[] {
         });
         currentQuestion = '';
       }
-      // Continue processing - we'll handle matching format after the loop
-      continue; // Skip this line (it's the round name)
+      // Skip this line (it's the round name) and all subsequent lines
+      // They'll be processed as matching pairs after the loop
+      continue;
+    }
+    
+    // Skip lines after we've detected a matching round (they'll be processed separately)
+    if (matchingModeStartIndex >= 0 && i > matchingModeStartIndex) {
+      continue;
     }
     
     // Check if line is a question:
