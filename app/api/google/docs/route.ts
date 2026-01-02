@@ -500,23 +500,24 @@ function parseNumberedQuestions(content: any[]): any[] {
   
   for (let i = 0; i < allText.length; i++) {
     const line = allText[i].trim();
-    if (!line) {
-      console.log(`⏭️ Skipping empty line ${i}`);
+    if (!line || line === '\n') {
       continue;
     }
     
     const nextLine = i < allText.length - 1 ? allText[i + 1]?.trim() : null;
     
-    console.log(`📄 [${i}/${allText.length - 1}] Current line:`, {
-      text: line.substring(0, 100),
-      hasQuestionMark: line.includes('?'),
-      length: line.length,
-      currentQuestionWaiting: currentQuestion ? `"${currentQuestion.substring(0, 50)}"` : 'None',
-      nextLinePreview: nextLine ? `"${nextLine.substring(0, 50)}"` : 'None'
-    });
+    // Check if line is a question:
+    // 1. Contains a question mark (?)
+    // 2. Contains fill-in-the-blank patterns (____, _____, etc.)
+    // 3. Is a long line (likely a question) followed by a short answer
+    const hasQuestionMark = line.includes('?');
+    const hasFillInBlank = /_{3,}/.test(line); // 3 or more underscores
+    const isLongLine = line.length > 50;
+    const nextLineIsShort = nextLine && nextLine.length < 50 && !nextLine.includes('?') && !/_{3,}/.test(nextLine);
     
-    // Check if line contains a question mark (likely a question)
-    if (line.includes('?')) {
+    const isQuestion = hasQuestionMark || (hasFillInBlank && isLongLine) || (isLongLine && nextLineIsShort);
+    
+    if (isQuestion) {
       // If we have a previous question without an answer, save it with empty answer
       if (currentQuestion) {
         console.log('⚠️ Previous question had no answer, saving with empty answer');
