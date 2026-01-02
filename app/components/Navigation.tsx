@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { href: '/submit', label: 'Submit Content', icon: '➕' },
   { href: '/import', label: 'Import CSV/Excel', icon: '📥' },
   { href: '/import/google', label: 'Import Google Docs', icon: '📄' },
+  { href: '/import/google/manual', label: 'Manual Google Docs Organizer', icon: '✏️' },
   { href: '/configure-import', label: 'Configure Import Format', icon: '⚙️' },
   { href: '/admin/delete', label: 'Delete Content', icon: '🗑️' },
   { href: '/login', label: 'Login', icon: '🔐' },

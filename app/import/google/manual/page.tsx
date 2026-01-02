@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Navigation from '../../../components/Navigation';
 
 interface ParsedLine {
   id: string;
@@ -83,9 +84,7 @@ function ManualOrganizeContent() {
       }
 
       // Extract raw text lines from the document
-      // We'll get the raw text content and split it into lines
-      const rawText = data.rawText || '';
-      const lines = rawText.split('\n').filter(line => line.trim().length > 0);
+      const lines = data.rawTextLines || (data.rawText ? data.rawText.split('\n').filter((l: string) => l.trim().length > 0) : []);
       
       setRawLines(lines);
       
