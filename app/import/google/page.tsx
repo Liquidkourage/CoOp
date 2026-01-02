@@ -189,6 +189,8 @@ function GoogleDocsImportPageContent() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [editableRows, setEditableRows] = useState<Array<{question: string; answer: string; round?: string}>>([]);
+  const [roundName, setRoundName] = useState<string>('');
   const [documentTitle, setDocumentTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -370,6 +372,21 @@ function GoogleDocsImportPageContent() {
       setParsedData(rows);
       setDocumentTitle(data.documentTitle || 'Untitled Document');
       
+      // Initialize editable rows from parsed data
+      if (rows.length > 0) {
+        const editable = rows.map((row: any) => ({
+          question: row.question || '',
+          answer: row.answer || '',
+          round: row.round || ''
+        }));
+        setEditableRows(editable);
+        
+        // Extract round name from first row if present
+        if (rows[0]?.round) {
+          setRoundName(rows[0].round);
+        }
+      }
+      
       if (rows.length === 0) {
         let errorMsg = 'No data found in document. ';
         if (data.debug) {
@@ -408,43 +425,57 @@ function GoogleDocsImportPageContent() {
       return;
     }
     
-    if (parsedData.length === 0 || mappings.length === 0) {
+    // Use editableRows if available, otherwise fall back to parsedData
+    const rowsToImport = editableRows.length > 0 ? editableRows : parsedData;
+    
+    if (rowsToImport.length === 0) {
       setError('No data to import');
       return;
     }
     
     setImporting(true);
-    setProgress({ current: 0, total: parsedData.length, imported: 0, errors: 0 });
+    setProgress({ current: 0, total: rowsToImport.length, imported: 0, errors: 0 });
     setError(null);
     
     let imported = 0;
     let errors = 0;
     
-    for (let i = 0; i < parsedData.length; i++) {
-      const row = parsedData[i];
-      setProgress({ current: i + 1, total: parsedData.length, imported, errors });
+    for (let i = 0; i < rowsToImport.length; i++) {
+      const row = rowsToImport[i];
+      setProgress({ current: i + 1, total: rowsToImport.length, imported, errors });
       
       try {
         const metadata: any = {};
         
-        // Map columns to fields using mappings
-        mappings.forEach(mapping => {
-          if (mapping.targetField === 'skip') return;
-          
-          const value = row[mapping.sourceColumn];
-          if (value === undefined || value === null || String(value).trim() === '') return;
-          
-          const strValue = String(value).trim();
-          
-          switch (mapping.targetField) {
-            case 'question':
-            case 'description':
-              metadata.question = strValue;
-              metadata.description = strValue;
-              break;
-            case 'answer':
-              metadata.answer = strValue;
-              break;
+        // If using editableRows, use direct mapping
+        if (editableRows.length > 0 && 'question' in row && 'answer' in row) {
+          metadata.question = row.question;
+          metadata.description = row.question;
+          metadata.answer = row.answer;
+          if (roundName) {
+            metadata.round = roundName;
+          } else if (row.round) {
+            metadata.round = row.round;
+          }
+        } else {
+          // Otherwise use column mappings (original logic)
+          mappings.forEach(mapping => {
+            if (mapping.targetField === 'skip') return;
+            
+            const value = (row as any)[mapping.sourceColumn];
+            if (value === undefined || value === null || String(value).trim() === '') return;
+            
+            const strValue = String(value).trim();
+            
+            switch (mapping.targetField) {
+              case 'question':
+              case 'description':
+                metadata.question = strValue;
+                metadata.description = strValue;
+                break;
+              case 'answer':
+                metadata.answer = strValue;
+                break;
             case 'alternateAnswers':
               const alternateAnswers = strValue.split(',').map(a => a.trim()).filter(Boolean);
               metadata.alternateAnswers = alternateAnswers;
@@ -760,7 +791,7 @@ function GoogleDocsImportPageContent() {
           )}
           
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
-            Ready to import {parsedData.length} questions from "{documentTitle}".
+            Ready to import {(editableRows.length > 0 ? editableRows : parsedData).length} questions from "{documentTitle}".
           </p>
           
           <button
@@ -777,7 +808,7 @@ function GoogleDocsImportPageContent() {
               fontWeight: '600'
             }}
           >
-            {importing ? 'Importing...' : `Import ${parsedData.length} Questions`}
+            {importing ? 'Importing...' : `Import ${(editableRows.length > 0 ? editableRows : parsedData).length} Questions`}
           </button>
         </div>
       )}
