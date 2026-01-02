@@ -515,6 +515,7 @@ function GoogleDocsImportPageContent() {
               break;
           }
         });
+        }
         
         // Ensure required fields
         if (!metadata.question) {
