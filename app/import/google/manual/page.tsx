@@ -333,7 +333,7 @@ function ManualOrganizeContent() {
     }));
   };
 
-  const pairQuestionAnswer = (questionId: string, answerId: string) => {
+  const pairQuestionAnswer = (questionId: string, answerId: string, autoPairNext: boolean = true) => {
     setOrganizedData(prev => {
       const questionLine = prev.find(l => l.id === questionId);
       const answerLine = prev.find(l => l.id === answerId);
@@ -365,47 +365,91 @@ function ManualOrganizeContent() {
         return line;
       });
       
-      // Auto-pair subsequent Q&A pairs if they follow the same pattern
-      // Check if there are more questions and answers following this pattern
-      let nextQuestionIndex = questionIndex + 1;
-      let nextAnswerIndex = answerIndex + 1;
-      
-      // Find the next question (unknown line that looks like a question)
-      while (nextQuestionIndex < updated.length && updated[nextQuestionIndex].type !== 'unknown') {
-        if (updated[nextQuestionIndex].type === 'question' && !updated[nextQuestionIndex].answer) {
-          // Found an unpaired question - try to pair it with the next answer
-          while (nextAnswerIndex < updated.length && updated[nextAnswerIndex].type !== 'unknown' && updated[nextAnswerIndex].type !== 'answer') {
-            nextAnswerIndex++;
+      // Auto-pair subsequent Q&A pairs if enabled and pattern detected
+      if (autoPairNext) {
+        // Calculate the gap between question and answer
+        const gap = answerIndex - questionIndex;
+        
+        // Try to auto-pair subsequent pairs with the same gap
+        let currentQIndex = answerIndex + 1;
+        let pairsCreated = 0;
+        const maxAutoPairs = 10; // Limit to prevent runaway pairing
+        
+        while (currentQIndex < updated.length && pairsCreated < maxAutoPairs) {
+          const currentLine = updated[currentQIndex];
+          
+          // Stop if we hit a classified line that breaks the pattern (round name, etc.)
+          if (currentLine.type === 'round') {
+            break; // New round detected, stop auto-pairing
           }
-          if (nextAnswerIndex < updated.length && updated[nextAnswerIndex].type === 'unknown') {
-            // Auto-pair this question with the next unknown line (likely answer)
-            const nextQuestion = updated[nextQuestionIndex];
-            const nextAnswer = updated[nextAnswerIndex];
+          
+          // Look for next question (unknown line that could be a question)
+          if (currentLine.type === 'unknown') {
+            const looksLikeQuestion = currentLine.text.includes('?') || 
+                                     /_{3,}/.test(currentLine.text) || 
+                                     currentLine.text.length > 50;
             
-            updated[nextQuestionIndex] = {
-              ...nextQuestion,
-              type: 'question' as const,
-              question: nextQuestion.text,
-              answer: nextAnswer.text,
-              round: currentRound || undefined,
-              suggestion: undefined,
-            };
-            
-            updated[nextAnswerIndex] = {
-              ...nextAnswer,
-              type: 'answer' as const,
-              answer: nextAnswer.text,
-              suggestion: undefined,
-            };
-            
-            // Move to next pair
-            nextQuestionIndex = nextAnswerIndex + 1;
-            nextAnswerIndex = nextQuestionIndex + 1;
-          } else {
-            break; // No more answers to pair
+            if (looksLikeQuestion) {
+              // Found a potential question - check if there's an answer at the expected position
+              const expectedAnswerIndex = currentQIndex + gap;
+              
+              if (expectedAnswerIndex < updated.length) {
+                const potentialAnswer = updated[expectedAnswerIndex];
+                
+                // Check if it looks like an answer
+                if (potentialAnswer.type === 'unknown' && 
+                    potentialAnswer.text.length < 100 && 
+                    !potentialAnswer.text.includes('?')) {
+                  
+                  // Auto-pair them
+                  updated[currentQIndex] = {
+                    ...currentLine,
+                    type: 'question' as const,
+                    question: currentLine.text,
+                    answer: potentialAnswer.text,
+                    round: currentRound || undefined,
+                    suggestion: undefined,
+                  };
+                  
+                  updated[expectedAnswerIndex] = {
+                    ...potentialAnswer,
+                    type: 'answer' as const,
+                    answer: potentialAnswer.text,
+                    suggestion: undefined,
+                  };
+                  
+                  pairsCreated++;
+                  // Move to after the answer to look for next question
+                  currentQIndex = expectedAnswerIndex + 1;
+                  continue;
+                }
+              }
+            }
+          } else if (currentLine.type === 'question' && !currentLine.answer) {
+            // Found an unpaired question - try to pair it with the next line
+            const nextLineIndex = currentQIndex + 1;
+            if (nextLineIndex < updated.length) {
+              const nextLine = updated[nextLineIndex];
+              if (nextLine.type === 'unknown' && nextLine.text.length < 100 && !nextLine.text.includes('?')) {
+                updated[currentQIndex] = {
+                  ...currentLine,
+                  answer: nextLine.text,
+                  suggestion: undefined,
+                };
+                updated[nextLineIndex] = {
+                  ...nextLine,
+                  type: 'answer' as const,
+                  answer: nextLine.text,
+                  suggestion: undefined,
+                };
+                pairsCreated++;
+                currentQIndex = nextLineIndex + 1;
+                continue;
+              }
+            }
           }
-        } else {
-          nextQuestionIndex++;
+          
+          currentQIndex++;
         }
       }
       
