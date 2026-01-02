@@ -385,12 +385,14 @@ function ManualOrganizeContent() {
       
       const updated = prev.map(line => {
         if (line.id === questionId) {
+          // Find the most recent round before this question
+          const assignedRound = currentRound || findMostRecentRound(prev, questionIndex) || undefined;
           return {
             ...line,
             type: 'question' as const,
             question: line.text,
             answer: answerLine.text,
-            round: currentRound || undefined,
+            round: assignedRound,
             suggestion: undefined,
           };
         }
@@ -420,7 +422,9 @@ function ManualOrganizeContent() {
           
           // Stop if we hit a classified line that breaks the pattern (round name, etc.)
           if (currentLine.type === 'round') {
-            break; // New round detected, stop auto-pairing
+            // New round detected - update current round and stop auto-pairing
+            setCurrentRound(currentLine.text);
+            break;
           }
           
           // Look for next question (unknown line that could be a question)
