@@ -561,7 +561,9 @@ function parseNumberedQuestions(content: any[]): any[] {
   // Look for patterns like "A → B", "A/B", "match", "pair", or check if round name suggests matching
   const isMatchingRound = roundName && (
     /\b(match|pair|matching|pairing|A\s*→\s*B|A\s*\/\s*B|given\s+A|presented\s+with\s+A)\b/i.test(roundName) ||
-    /→/.test(roundName)
+    /→/.test(roundName) ||
+    // Film/subtitle matching patterns
+    /\b(name\s+the|film|movie|sequel|subtitle|title)\b/i.test(roundName)
   );
   
   // Also check first few lines for matching patterns
@@ -569,7 +571,19 @@ function parseNumberedQuestions(content: any[]): any[] {
     /→/.test(line) || /^[A-Z]:\s/.test(line.trim()) || /\b[A-Z]\s*→\s*[A-Z]\b/i.test(line)
   );
   
-  const useMatchingFormat = isMatchingRound || hasMatchingPattern;
+  // Check if we have pairs of short lines (likely subtitle → film title format)
+  // Pattern: alternating short lines (no question marks, no FitB) that look like titles/subtitles
+  const hasTitlePairs = allText.length >= 4 && 
+    allText.slice(0, 6).every((line, idx) => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && 
+             trimmed.length < 100 && 
+             !trimmed.includes('?') && 
+             !/_{3,}/.test(trimmed) &&
+             !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(trimmed);
+    });
+  
+  const useMatchingFormat = isMatchingRound || hasMatchingPattern || hasTitlePairs;
   
   if (useMatchingFormat) {
     console.log('🔗 Detected matching/pairing round format (A → B)');
