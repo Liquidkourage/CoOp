@@ -707,6 +707,19 @@ function parseNumberedQuestions(content: any[]): any[] {
       continue;
     }
     
+    // FIRST: Check if we have a question waiting - if so, this line is likely an answer, not a round name
+    if (currentQuestion) {
+      // We have a question waiting - this line is the answer
+      console.log('✅ Found answer for waiting question');
+      rows.push({
+        question: currentQuestion.trim(),
+        answer: line.trim(),
+        round: currentRoundName || undefined
+      });
+      currentQuestion = ''; // Clear since we've saved this pair
+      continue; // Move to next line
+    }
+    
     // Check if line is a question:
     // 1. Contains a question mark (?)
     // 2. Contains fill-in-the-blank patterns (____, _____, etc.)
