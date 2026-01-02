@@ -583,11 +583,14 @@ function ManualOrganizeContent() {
 
           // Create FormData to match API expectations
           const formData = new FormData();
+          // Map round to topics (rounds are essentially topics/categories)
+          const topics = pair.round ? [pair.round] : [];
           const metadata = {
             creator,
             question: pair.question,
             answer: pair.answer,
             round: pair.round,
+            topics: topics, // Include topics array (round name becomes topic)
             date: new Date().toISOString(),
           };
           
