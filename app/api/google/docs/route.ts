@@ -650,27 +650,46 @@ function parseNumberedQuestions(content: any[]): any[] {
       continue;
     }
     
-    // Check if this looks like a film/subtitle matching round
-    const isFilmRoundName = /\b(name\s+the.*film|film.*sequel|film.*subtitle|subtitle.*film)\b/i.test(line);
-    
-    if (looksLikeRoundName && isFilmRoundName && matchingModeStartIndex === -1) {
-      // Found a film round - switch to matching mode from this point
-      console.log('🔗 Detected film/subtitle round mid-document:', line);
-      matchingModeStartIndex = i;
-      currentRoundName = line;
-      // Save any pending question first
-      if (currentQuestion) {
-        console.log('⚠️ Saving pending question before switching to matching mode');
-        rows.push({
-          question: currentQuestion.trim(),
-          answer: '',
-          round: roundName || undefined
-        });
-        currentQuestion = '';
+    // Check if this is a new regular round name (not film, not audio/visual)
+    if (looksLikeRoundName && !isAudioVisualRound) {
+      const isFilmRoundName = /\b(name\s+the.*film|film.*sequel|film.*subtitle|subtitle.*film)\b/i.test(line);
+      
+      if (isFilmRoundName && matchingModeStartIndex === -1) {
+        // Found a film round - switch to matching mode from this point
+        console.log('🔗 Detected film/subtitle round mid-document:', line);
+        matchingModeStartIndex = i;
+        currentRoundName = line;
+        // Save any pending question first
+        if (currentQuestion) {
+          console.log('⚠️ Saving pending question before switching to matching mode');
+          rows.push({
+            question: currentQuestion.trim(),
+            answer: '',
+            round: currentRoundName || undefined
+          });
+          currentQuestion = '';
+        }
+        // Skip this line (it's the round name) and all subsequent lines
+        // They'll be processed as matching pairs after the loop
+        continue;
+      } else if (!isFilmRoundName) {
+        // Found a new regular round name - update current round
+        console.log('📋 Detected new round mid-document:', line);
+        // Save any pending question from previous round
+        if (currentQuestion) {
+          console.log('⚠️ Saving pending question from previous round');
+          rows.push({
+            question: currentQuestion.trim(),
+            answer: '',
+            round: currentRoundName || undefined
+          });
+          currentQuestion = '';
+        }
+        // Update current round name
+        currentRoundName = line;
+        // Skip this line (it's the round name)
+        continue;
       }
-      // Skip this line (it's the round name) and all subsequent lines
-      // They'll be processed as matching pairs after the loop
-      continue;
     }
     
     // Skip lines after we've detected a matching round (they'll be processed separately)
