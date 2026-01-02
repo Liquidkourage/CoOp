@@ -341,16 +341,28 @@ function ManualOrganizeContent() {
       // Regenerate suggestions after classification
       const withSuggestions = generateSuggestions(updated);
       
-      // Auto-assign current round to all subsequent questions until next round
-      return withSuggestions.map((line, idx) => {
-        if (type === 'round' && idx > lineIndex && line.type === 'question' && !line.round) {
-          return {
-            ...line,
-            round: newCurrentRound || undefined,
-          };
-        }
-        return line;
-      });
+      // When a round is detected, update ALL subsequent questions to belong to that round
+      // until another round is encountered
+      if (type === 'round' && newCurrentRound) {
+        return withSuggestions.map((line, idx) => {
+          if (idx > lineIndex) {
+            // Stop updating if we hit another round
+            if (line.type === 'round') {
+              return line; // Don't update beyond this round
+            }
+            // Update all questions to use the new round
+            if (line.type === 'question') {
+              return {
+                ...line,
+                round: newCurrentRound,
+              };
+            }
+          }
+          return line;
+        });
+      }
+      
+      return withSuggestions;
     });
   };
   
