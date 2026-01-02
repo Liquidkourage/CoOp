@@ -387,6 +387,57 @@ function parseParagraphs(content: any[]): any[] {
   return rows;
 }
 
+// Parse matching format (A → B): Given A, what is B?
+function parseMatchingFormat(lines: string[], roundName?: string) {
+  const rows: Array<{question: string; answer: string; round?: string}> = [];
+  
+  console.log('🔗 Parsing matching format,', lines.length, 'lines');
+  
+  for (let i = 0; i < lines.length; i += 2) {
+    const lineA = lines[i]?.trim();
+    const lineB = lines[i + 1]?.trim();
+    
+    if (!lineA) continue;
+    
+    // Handle different formats:
+    // 1. "A: [text]" → "B: [answer]"
+    // 2. "[text] → [answer]"
+    // 3. Just two lines: first is A, second is B
+    
+    let questionPart = lineA;
+    let answerPart = lineB || '';
+    
+    // Remove "A:" or "B:" prefixes if present
+    questionPart = questionPart.replace(/^[A-Z]:\s*/i, '').trim();
+    answerPart = answerPart.replace(/^[A-Z]:\s*/i, '').trim();
+    
+    // Check for arrow format: "text → answer"
+    if (lineA.includes('→')) {
+      const parts = lineA.split('→').map(p => p.trim());
+      if (parts.length === 2) {
+        questionPart = parts[0];
+        answerPart = parts[1];
+      }
+    }
+    
+    // Format as question: "Given [A], what is [B]?"
+    const question = `Given ${questionPart}, what is ${answerPart || 'the answer'}?`;
+    const answer = answerPart || '';
+    
+    if (questionPart) {
+      rows.push({
+        question: question,
+        answer: answer,
+        round: roundName || undefined
+      });
+      console.log(`✅ Parsed matching pair: "${questionPart}" → "${answerPart}"`);
+    }
+  }
+  
+  console.log(`📊 Parsed ${rows.length} matching pairs`);
+  return rows;
+}
+
 // Parse numbered questions format: "Question text? Answer" (answer on same or next line)
 function parseNumberedQuestions(content: any[]): any[] {
   const rows: any[] = [];
