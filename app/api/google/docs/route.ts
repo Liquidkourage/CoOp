@@ -549,9 +549,9 @@ function parseNumberedQuestions(content: any[]): any[] {
         console.log('📝 Found question, waiting for answer on next line:', currentQuestion.substring(0, 60));
       }
     } else {
-      // Line without question mark - this MUST be an answer (or skipped if no question waiting)
+      // Line without question mark - could be an answer or a question in a different format
       if (currentQuestion) {
-        // We have a question waiting - this line is definitely the answer
+        // We have a question waiting - this line is the answer
         console.log('✅ Found answer for waiting question');
         rows.push({
           question: currentQuestion.trim(),
@@ -560,9 +560,17 @@ function parseNumberedQuestions(content: any[]): any[] {
         });
         currentQuestion = ''; // Clear since we've saved this pair
       } else {
-        // No current question - this line cannot be paired
-        // Skip it (might be a section header, round name that wasn't caught, etc.)
-        console.log('⏭️ Skipping line - no question waiting (might be header/round name):', line.substring(0, 50));
+        // No current question - check if this might be a question followed by a short answer
+        // (Fill-in-the-blank or other formats)
+        if (hasFillInBlank || (isLongLine && nextLineIsShort)) {
+          // This looks like a question, wait for the answer
+          currentQuestion = line;
+          console.log('📝 Found question (FitB or long format), waiting for answer:', line.substring(0, 60));
+        } else {
+          // Skip short lines that don't look like questions
+          // (might be section headers, round names, etc.)
+          console.log('⏭️ Skipping line - no question waiting:', line.substring(0, 50));
+        }
       }
     }
   }
