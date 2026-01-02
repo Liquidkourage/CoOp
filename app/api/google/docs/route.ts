@@ -740,8 +740,24 @@ function parseNumberedQuestions(content: any[]): any[] {
     }
   }
   
-  // Add last question if it exists (even without answer)
-  if (currentQuestion) {
+  // If we detected a matching round mid-document, process it separately
+  if (matchingModeStartIndex >= 0) {
+    console.log(`🔗 Processing matching round starting at index ${matchingModeStartIndex}`);
+    // Get all lines from the matching round onwards
+    const matchingLines = allText.slice(matchingModeStartIndex + 1).filter(l => l.trim()); // Skip the round name line
+    console.log(`🔗 Found ${matchingLines.length} lines for matching round`);
+    if (matchingLines.length > 0) {
+      console.log(`🔗 First few matching lines:`, matchingLines.slice(0, 5));
+      const matchingRows = parseMatchingFormat(matchingLines, currentRoundName);
+      console.log(`🔗 Parsed ${matchingRows.length} matching pairs`);
+      rows.push(...matchingRows);
+    } else {
+      console.log('⚠️ No lines found for matching round');
+    }
+  }
+  
+  // Add last question if it exists (even without answer) - but only if we're not in matching mode
+  if (currentQuestion && matchingModeStartIndex === -1) {
     console.log('Saving final question without answer');
     rows.push({
       question: currentQuestion.trim(),
