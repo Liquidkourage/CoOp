@@ -767,29 +767,91 @@ function ManualOrganizeContent() {
                       </div>
                     </div>
                     
-                    {line.type === 'question' && !line.answer && (
-                      <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fff9c4', borderRadius: '3px' }}>
-                        <div style={{ fontSize: '12px', marginBottom: '5px' }}>Pair with answer:</div>
-                        <select
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              pairQuestionAnswer(line.id, e.target.value);
-                              e.target.value = '';
-                            }
-                          }}
-                          style={{ width: '100%', padding: '5px' }}
-                        >
-                          <option value="">Select answer...</option>
-                          {organizedData
-                            .filter(l => l.type === 'answer' || (l.type === 'unknown' && l.id !== line.id))
-                            .map(l => (
-                              <option key={l.id} value={l.id}>
-                                {l.text.substring(0, 60)}{l.text.length > 60 ? '...' : ''}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    )}
+                    {line.type === 'question' && !line.answer && (() => {
+                      // Find the most likely answer based on pattern
+                      const questionIndex = organizedData.findIndex(l => l.id === line.id);
+                      
+                      // Check if there's an established pattern (previous Q&A pairs)
+                      let suggestedAnswerId: string | undefined;
+                      let gap = 1; // Default: answer is next line
+                      
+                      // Look backwards to find the most recent Q&A pair to determine gap
+                      for (let i = questionIndex - 1; i >= 0; i--) {
+                        const prevLine = organizedData[i];
+                        if (prevLine.type === 'question' && prevLine.answer) {
+                          // Found a paired question - find its answer index
+                          const answerIndex = organizedData.findIndex(l => l.text === prevLine.answer);
+                          if (answerIndex >= 0) {
+                            gap = answerIndex - i;
+                            break;
+                          }
+                        }
+                      }
+                      
+                      // Suggest answer based on gap pattern
+                      const expectedAnswerIndex = questionIndex + gap;
+                      if (expectedAnswerIndex < organizedData.length) {
+                        const potentialAnswer = organizedData[expectedAnswerIndex];
+                        if (potentialAnswer.type === 'unknown' && 
+                            potentialAnswer.text.length < 100 && 
+                            !potentialAnswer.text.includes('?')) {
+                          suggestedAnswerId = potentialAnswer.id;
+                        }
+                      }
+                      
+                      // Fallback: just use next unknown line
+                      if (!suggestedAnswerId) {
+                        const nextUnknownLine = organizedData.slice(questionIndex + 1).find(l => l.type === 'unknown');
+                        suggestedAnswerId = nextUnknownLine?.id;
+                      }
+                      
+                      return (
+                        <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fff9c4', borderRadius: '3px' }}>
+                          <div style={{ fontSize: '12px', marginBottom: '5px' }}>Pair with answer:</div>
+                          {suggestedAnswerId && (() => {
+                            const suggestedLine = organizedData.find(l => l.id === suggestedAnswerId);
+                            return (
+                              <div style={{ marginBottom: '5px', padding: '5px', backgroundColor: '#e3f2fd', borderRadius: '3px', fontSize: '11px' }}>
+                                💡 Suggested (pattern): {suggestedLine?.text.substring(0, 50)}{suggestedLine && suggestedLine.text.length > 50 ? '...' : ''}
+                                <button
+                                  onClick={() => pairQuestionAnswer(line.id, suggestedAnswerId!, true)}
+                                  style={{ 
+                                    marginLeft: '5px', 
+                                    padding: '2px 6px', 
+                                    fontSize: '10px',
+                                    backgroundColor: '#2196F3',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '2px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Pair & Auto-continue
+                                </button>
+                              </div>
+                            );
+                          })()}
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                pairQuestionAnswer(line.id, e.target.value, false); // Don't auto-pair if manually selected
+                                e.target.value = '';
+                              }
+                            }}
+                            style={{ width: '100%', padding: '5px' }}
+                          >
+                            <option value="">Select answer...</option>
+                            {organizedData
+                              .filter(l => l.type === 'answer' || (l.type === 'unknown' && l.id !== line.id))
+                              .map(l => (
+                                <option key={l.id} value={l.id} style={l.id === suggestedAnswerId ? { fontWeight: 'bold', backgroundColor: '#e3f2fd' } : {}}>
+                                  {l.text.substring(0, 60)}{l.text.length > 60 ? '...' : ''}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
