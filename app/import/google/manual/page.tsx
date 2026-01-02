@@ -327,14 +327,6 @@ function ManualOrganizeContent() {
           return updatedLine;
         }
         
-        // Auto-assign round to questions that come after a round name
-        if (type === 'round' && idx > lineIndex && line.type === 'question' && !line.round) {
-          return {
-            ...line,
-            round: newCurrentRound || undefined,
-          };
-        }
-        
         return line;
       });
       
@@ -342,7 +334,7 @@ function ManualOrganizeContent() {
       const withSuggestions = generateSuggestions(updated);
       
       // When a round is detected, update ALL subsequent questions to belong to that round
-      // until another round is encountered
+      // until another round is encountered (replacing any existing round assignment)
       if (type === 'round' && newCurrentRound) {
         return withSuggestions.map((line, idx) => {
           if (idx > lineIndex) {
@@ -350,7 +342,7 @@ function ManualOrganizeContent() {
             if (line.type === 'round') {
               return line; // Don't update beyond this round
             }
-            // Update all questions to use the new round
+            // Update all questions to use the new round (replace existing round)
             if (line.type === 'question') {
               return {
                 ...line,
