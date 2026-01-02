@@ -27,38 +27,71 @@ function getOAuth2Client(accessToken: string, refreshToken?: string) {
 function extractAllTextLinesSimple(content: any[]): string[] {
   const lines: string[] = [];
   
-  function extractText(node: any): string {
-    let text = '';
+  function extractTextFromParagraph(paragraph: any): string[] {
+    const paragraphLines: string[] = [];
+    let currentLine = '';
     
-    if (node.paragraph) {
-      if (node.paragraph.elements) {
-        node.paragraph.elements.forEach((elem: any) => {
-          if (elem.textRun) {
-            text += elem.textRun.content || '';
+    if (paragraph.elements) {
+      paragraph.elements.forEach((elem: any) => {
+        if (elem.textRun) {
+          const content = elem.textRun.content || '';
+          
+          // Split on vertical tab (\u000b) - Google Docs uses this to separate Q&A
+          if (content.includes('\u000b')) {
+            const parts = content.split('\u000b');
+            // Add everything before the vertical tab to current line
+            currentLine += parts[0];
+            if (currentLine.trim()) {
+              paragraphLines.push(currentLine.trim());
+            }
+            // Start new line with content after vertical tab
+            currentLine = parts.slice(1).join('\u000b');
+          } else {
+            currentLine += content;
           }
-        });
-      }
-    }
-    
-    if (node.content) {
-      node.content.forEach((child: any) => {
-        text += extractText(child);
+        }
       });
     }
     
-    return text;
+    // Add final line if it exists
+    if (currentLine.trim()) {
+      paragraphLines.push(currentLine.trim());
+    }
+    
+    return paragraphLines;
+  }
+  
+  function processNode(node: any): void {
+    if (node.paragraph) {
+      const paragraphLines = extractTextFromParagraph(node.paragraph);
+      lines.push(...paragraphLines);
+    }
+    
+    if (node.content && Array.isArray(node.content)) {
+      node.content.forEach((child: any) => {
+        processNode(child);
+      });
+    }
+    
+    if (node.elements && Array.isArray(node.elements)) {
+      node.elements.forEach((child: any) => {
+        processNode(child);
+      });
+    }
   }
   
   content.forEach(node => {
-    const text = extractText(node).trim();
-    if (text) {
-      // Split on newlines to get individual lines
-      const splitLines = text.split('\n').map(l => l.trim()).filter(l => l);
-      lines.push(...splitLines);
-    }
+    processNode(node);
   });
   
-  return lines;
+  // Also split any lines that contain newlines (fallback)
+  const finalLines: string[] = [];
+  lines.forEach(line => {
+    const splitLines = line.split('\n').map(l => l.trim()).filter(l => l);
+    finalLines.push(...splitLines);
+  });
+  
+  return finalLines;
 }
 
 // Parse Google Docs content into structured data
