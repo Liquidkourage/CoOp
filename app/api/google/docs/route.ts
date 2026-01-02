@@ -127,20 +127,27 @@ function parseGoogleDocContent(doc: any): any[] {
   }
   
   // Final safety check: Remove any rows where the question looks like a round name
-  // (short, no question mark, doesn't start with question words)
+  // BUT keep FitB questions and questions with answers
   const filteredRows = rows.filter(row => {
     if (!row.question) return true;
     
     const questionText = row.question.trim();
+    const hasAnswer = row.answer && row.answer.trim().length > 0;
+    const hasFillInBlank = /_{3,}/.test(questionText);
+    
+    // Keep FitB questions and questions with answers
+    if (hasFillInBlank || hasAnswer) {
+      return true;
+    }
     
     // Skip rows where question is suspiciously round-name-like
-    // (short, no question mark, no question words, not numbered)
+    // (short, no question mark, no question words, not numbered, not FitB)
     const isShort = questionText.length < 100;
     const hasNoQuestionMark = !questionText.includes('?');
     const isNotNumbered = !/^\d+\./.test(questionText);
     const hasNoQuestionWords = !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(questionText);
     
-    if (isShort && hasNoQuestionMark && isNotNumbered && hasNoQuestionWords) {
+    if (isShort && hasNoQuestionMark && isNotNumbered && hasNoQuestionWords && !hasFillInBlank) {
       console.log('⚠️ Filtering out row that looks like round name:', questionText);
       return false;
     }
