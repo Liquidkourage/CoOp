@@ -162,134 +162,138 @@ function ManualOrganizeContent() {
     return (longer.length - distance) / longer.length;
   };
 
-  // Analyze patterns and generate suggestions
+  // Analyze patterns incrementally - detect patterns from recent classifications and apply forward
   const generateSuggestions = (data: ParsedLine[]): ParsedLine[] => {
     const suggestions = [...data];
     
-    // Analyze patterns from user's previous classifications
-    const roundPatterns: string[] = [];
-    const questionPatterns: { hasQuestionMark: boolean; avgLength: number; count: number } = { hasQuestionMark: false, avgLength: 0, count: 0 };
-    const answerPatterns: { avgLength: number; count: number; afterQuestion: boolean } = { avgLength: 0, count: 0, afterQuestion: false };
+    // Find the last classified section and detect its pattern
+    let patternStartIndex = -1;
+    let patternType: 'question-answer' | 'round' | null = null;
+    let patternRound: string | null = null;
     
-    let questionCount = 0;
-    let answerCount = 0;
-    let roundCount = 0;
-    let totalQuestionLength = 0;
-    let totalAnswerLength = 0;
-    
-    // Analyze classified lines
-    data.forEach((line, idx) => {
-      if (line.type === 'round') {
-        roundCount++;
-        roundPatterns.push(line.text);
-      } else if (line.type === 'question') {
-        questionCount++;
-        totalQuestionLength += line.text.length;
-        if (line.text.includes('?')) {
-          questionPatterns.hasQuestionMark = true;
-        }
-      } else if (line.type === 'answer') {
-        answerCount++;
-        totalAnswerLength += line.text.length;
-        // Check if this answer follows a question
-        if (idx > 0 && data[idx - 1].type === 'question') {
-          answerPatterns.afterQuestion = true;
-        }
-      }
-    });
-    
-    if (questionCount > 0) {
-      questionPatterns.avgLength = totalQuestionLength / questionCount;
-      questionPatterns.count = questionCount;
-    }
-    if (answerCount > 0) {
-      answerPatterns.avgLength = totalAnswerLength / answerCount;
-      answerPatterns.count = answerCount;
-    }
-    
-    // Generate suggestions for unknown lines
-    suggestions.forEach((line, idx) => {
+    // Look backwards from the end to find the most recent pattern
+    for (let i = data.length - 1; i >= 0; i--) {
+      const line = data[i];
+      
+      // If we find a classified line, check if there's a pattern
       if (line.type !== 'unknown') {
-        return; // Skip already classified lines
-      }
-      
-      const lineSuggestions: Array<{ type: 'round' | 'question' | 'answer'; confidence: number; reason: string }> = [];
-      
-      // Check if it looks like a round name
-      if (roundCount > 0) {
-        const isShort = line.text.length < 100;
-        const hasNoQuestionMark = !line.text.includes('?');
-        const matchesRoundPattern = roundPatterns.some(pattern => {
-          const similarity = calculateSimilarity(line.text.toLowerCase(), pattern.toLowerCase());
-          return similarity > 0.7 || (isShort && hasNoQuestionMark && line.text.length > 10);
-        });
-        
-        if (matchesRoundPattern || (isShort && hasNoQuestionMark && line.text.length > 10 && line.text.length < 80)) {
-          lineSuggestions.push({
-            type: 'round',
-            confidence: matchesRoundPattern ? 85 : 60,
-            reason: matchesRoundPattern ? 'Similar to previous round names' : 'Short line without question mark'
-          });
+        // Check if this is part of a question-answer pattern
+        if (line.type === 'question' && line.answer) {
+          // Found a complete Q&A pair - check if previous lines follow this pattern
+          patternStartIndex = i;
+          patternType = 'question-answer';
+          patternRound = line.round || null;
+          break;
+        } else if (line.type === 'round') {
+          // Found a round name - this might start a new section
+          patternStartIndex = i;
+          patternType = 'round';
+          patternRound = line.text;
+          break;
         }
       }
+    }
+    
+    // If we found a pattern, apply it forward to unknown lines
+    if (patternStartIndex >= 0 && patternType) {
+      let expectedNextType: 'question' | 'answer' | 'round' | null = null;
       
-      // Check if it looks like a question
-      if (questionCount > 0) {
-        const hasQuestionMark = line.text.includes('?');
-        const hasFillInBlank = /_{3,}/.test(line.text);
-        const lengthMatch = questionPatterns.avgLength > 0 && Math.abs(line.text.length - questionPatterns.avgLength) < 50;
-        
-        if (hasQuestionMark) {
-          lineSuggestions.push({
-            type: 'question',
-            confidence: 95,
-            reason: 'Contains question mark'
-          });
-        } else if (hasFillInBlank) {
-          lineSuggestions.push({
-            type: 'question',
-            confidence: 90,
-            reason: 'Contains fill-in-the-blank pattern'
-          });
-        } else if (lengthMatch && line.text.length > 50) {
-          lineSuggestions.push({
-            type: 'question',
-            confidence: 70,
-            reason: 'Similar length to previous questions'
-          });
-        }
+      if (patternType === 'question-answer') {
+        // After a Q&A pair, expect another question
+        expectedNextType = 'question';
+      } else if (patternType === 'round') {
+        // After a round name, expect a question
+        expectedNextType = 'question';
       }
       
-      // Check if it looks like an answer
-      if (answerCount > 0) {
-        const isShort = line.text.length < 100;
-        const hasNoQuestionMark = !line.text.includes('?');
-        const lengthMatch = answerPatterns.avgLength > 0 && Math.abs(line.text.length - answerPatterns.avgLength) < 30;
-        const followsQuestion = idx > 0 && data[idx - 1].type === 'question';
+      // Apply pattern forward
+      for (let i = patternStartIndex + 1; i < suggestions.length; i++) {
+        const line = suggestions[i];
         
-        if (followsQuestion && isShort && hasNoQuestionMark) {
-          lineSuggestions.push({
-            type: 'answer',
-            confidence: 90,
-            reason: 'Short line following a question'
-          });
-        } else if (lengthMatch && isShort && hasNoQuestionMark) {
-          lineSuggestions.push({
-            type: 'answer',
-            confidence: 75,
-            reason: 'Similar length to previous answers'
-          });
+        // Stop if we hit a classified line (user broke the pattern)
+        if (line.type !== 'unknown') {
+          // Check if this classified line matches the expected pattern
+          if (expectedNextType === 'question' && line.type === 'question') {
+            // Pattern continues - next should be answer
+            expectedNextType = 'answer';
+          } else if (expectedNextType === 'answer' && line.type === 'answer') {
+            // Pattern continues - next should be question
+            expectedNextType = 'question';
+          } else if (line.type === 'round') {
+            // New round detected - reset pattern
+            expectedNextType = 'question';
+            patternRound = line.text;
+          } else {
+            // Pattern broken - stop suggesting
+            break;
+          }
+          continue;
+        }
+        
+        // Generate suggestion based on expected pattern
+        if (expectedNextType === 'question') {
+          const hasQuestionMark = line.text.includes('?');
+          const hasFillInBlank = /_{3,}/.test(line.text);
+          const isLong = line.text.length > 50;
+          
+          if (hasQuestionMark || hasFillInBlank || isLong) {
+            line.suggestion = {
+              type: 'question',
+              confidence: hasQuestionMark ? 95 : hasFillInBlank ? 90 : 80,
+              reason: hasQuestionMark ? 'Expected question (contains ?)' : 
+                      hasFillInBlank ? 'Expected question (fill-in-blank)' :
+                      'Expected question (pattern continuation)'
+            };
+            expectedNextType = 'answer'; // Next should be answer
+          }
+        } else if (expectedNextType === 'answer') {
+          const isShort = line.text.length < 100;
+          const hasNoQuestionMark = !line.text.includes('?');
+          
+          if (isShort && hasNoQuestionMark) {
+            line.suggestion = {
+              type: 'answer',
+              confidence: 90,
+              reason: 'Expected answer (pattern continuation)'
+            };
+            expectedNextType = 'question'; // Next should be question
+          }
+        } else if (expectedNextType === 'round') {
+          const isShort = line.text.length < 100 && line.text.length > 10;
+          const hasNoQuestionMark = !line.text.includes('?');
+          
+          if (isShort && hasNoQuestionMark) {
+            line.suggestion = {
+              type: 'round',
+              confidence: 75,
+              reason: 'Expected round name (pattern continuation)'
+            };
+            expectedNextType = 'question';
+            patternRound = line.text;
+          }
         }
       }
+    }
+    
+    // Also check for obvious patterns (question marks, etc.) even without established pattern
+    suggestions.forEach((line, idx) => {
+      if (line.type !== 'unknown' || line.suggestion) {
+        return; // Skip already classified or suggested lines
+      }
       
-      // Set the best suggestion
-      if (lineSuggestions.length > 0) {
-        const bestSuggestion = lineSuggestions.reduce((best, current) => 
-          current.confidence > best.confidence ? current : best
-        );
-        line.suggestion = bestSuggestion;
-      } else {
-        line.suggestion = undefined;
+      // Check for obvious question markers
+      if (line.text.includes('?')) {
+        line.suggestion = {
+          type: 'question',
+          confidence: 95,
+          reason: 'Contains question mark'
+        };
+      } else if (/_{3,}/.test(line.text)) {
+        line.suggestion = {
+          type: 'question',
+          confidence: 90,
+          reason: 'Contains fill-in-the-blank pattern'
+        };
       }
     });
     
