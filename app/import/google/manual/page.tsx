@@ -11,6 +11,11 @@ interface ParsedLine {
   round?: string;
   question?: string;
   answer?: string;
+  suggestion?: {
+    type: 'round' | 'question' | 'answer';
+    confidence: number;
+    reason: string;
+  };
 }
 
 function ManualOrganizeContent() {
