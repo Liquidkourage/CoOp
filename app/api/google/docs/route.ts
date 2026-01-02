@@ -492,6 +492,14 @@ function parseNumberedQuestions(content: any[]): any[] {
   if (isRoundName) {
     roundName = firstLine;
     console.log('✅ Round name:', roundName);
+    
+    // Check if this is an audio/visual round - skip it
+    const isAudioVisual = /\b(audio|visual|AV|A\/V|sound|video|listen|watch|hear|see)\b/i.test(roundName);
+    if (isAudioVisual) {
+      console.log('⏭️ Skipping audio/visual round:', roundName);
+      return []; // Return empty array - skip this round entirely
+    }
+    
     allText.shift(); // Remove from processing
     console.log('✅ Remaining lines:', allText.length);
   } else {
