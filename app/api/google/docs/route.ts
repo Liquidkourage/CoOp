@@ -628,6 +628,28 @@ function parseNumberedQuestions(content: any[]): any[] {
                                  (line.length < 100 && !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(line))
                                );
     
+    // Check if this is an audio/visual round that should be skipped
+    const isAudioVisualRound = /\b(audio|visual|AV|A\/V|sound|video|listen|watch|hear|see|discontinued|discontinue)\b/i.test(line);
+    if (looksLikeRoundName && isAudioVisualRound) {
+      console.log('⏭️ Skipping audio/visual round mid-document:', line);
+      // Skip this round and all subsequent lines until we find the next round or end of document
+      let skipUntil = allText.length;
+      for (let j = i + 1; j < allText.length; j++) {
+        const nextLine = allText[j]?.trim();
+        // Check if next line looks like a new round name (not audio/visual)
+        if (nextLine && nextLine.length < 150 && !nextLine.includes('?') && 
+            !/\b(audio|visual|AV|A\/V|sound|video|listen|watch|hear|see|discontinued|discontinue)\b/i.test(nextLine) &&
+            (/\b(name\s+the|fitb:|round|^[A-Z][^?]*$)/i.test(nextLine) ||
+             (nextLine.length < 100 && !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(nextLine)))) {
+          skipUntil = j;
+          break;
+        }
+      }
+      // Skip to the next round or end
+      i = skipUntil - 1; // -1 because the loop will increment
+      continue;
+    }
+    
     // Check if this looks like a film/subtitle matching round
     const isFilmRoundName = /\b(name\s+the.*film|film.*sequel|film.*subtitle|subtitle.*film)\b/i.test(line);
     
