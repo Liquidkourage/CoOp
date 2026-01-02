@@ -591,15 +591,22 @@ function parseNumberedQuestions(content: any[]): any[] {
   }
   
   // Filter out any rows where question matches the round name (safety check)
-  // Also filter out rows where question starts with the round name (in case of variations)
+  // BUT keep FitB questions and questions with answers
   const filteredRows = rows.filter(row => {
     if (!row.question) return true;
     
     const questionText = row.question.trim();
+    const hasAnswer = row.answer && row.answer.trim().length > 0;
+    const hasFillInBlank = /_{3,}/.test(questionText);
     
-    // Exact match
+    // Keep FitB questions and questions with answers
+    if (hasFillInBlank || hasAnswer) {
+      return true;
+    }
+    
+    // Exact match with round name
     if (roundName && questionText === roundName.trim()) {
-      console.log('⚠️ Filtering out row (exact match):', questionText);
+      console.log('⚠️ Filtering out row (exact match with round name):', questionText);
       return false;
     }
     
@@ -612,6 +619,7 @@ function parseNumberedQuestions(content: any[]): any[] {
     // Also check if question is suspiciously short and matches round name pattern
     if (roundName && questionText.length < 100 && 
         !questionText.includes('?') && 
+        !hasFillInBlank &&
         questionText.toLowerCase() === roundName.toLowerCase().trim()) {
       console.log('⚠️ Filtering out row (short, no ?, matches round name):', questionText);
       return false;
