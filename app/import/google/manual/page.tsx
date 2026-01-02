@@ -43,11 +43,32 @@ function ManualOrganizeContent() {
     }
   }, [searchParams]);
 
+  const extractDocumentId = (urlOrId: string): string => {
+    // If it's already just an ID (no slashes), return as-is
+    if (!urlOrId.includes('/')) {
+      return urlOrId.trim();
+    }
+    
+    // Extract ID from Google Docs URL
+    // Format: https://docs.google.com/document/d/DOCUMENT_ID/edit
+    const match = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    
+    // If no match, try to use the last part of the URL
+    const parts = urlOrId.split('/').filter(p => p);
+    return parts[parts.length - 1] || urlOrId;
+  };
+
   const handleFetchDocument = async () => {
     if (!documentId || !accessToken) {
       alert('Please enter a document ID and ensure you are authenticated');
       return;
     }
+
+    const extractedId = extractDocumentId(documentId);
+    console.log('Extracted document ID:', extractedId);
 
     setLoading(true);
     try {
@@ -57,7 +78,7 @@ function ManualOrganizeContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          documentId,
+          documentId: extractedId,
           accessToken,
           refreshToken,
         }),
