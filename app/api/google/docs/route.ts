@@ -424,25 +424,41 @@ function parseNumberedQuestions(content: any[]): any[] {
   }
   
   // Process content to extract each paragraph, splitting on vertical tabs
-  function processContent(nodes: any[]) {
-    nodes.forEach(node => {
+  function processContent(nodes: any[], depth: number = 0) {
+    if (!nodes || !Array.isArray(nodes)) {
+      return;
+    }
+    
+    nodes.forEach((node, idx) => {
+      // Skip section breaks and other non-content nodes
+      if (node.sectionBreak) {
+        return;
+      }
+      
       if (node.paragraph) {
         const lines = extractParagraphLines(node);
         lines.forEach(line => {
-          if (line && line !== '\n') {
+          if (line && line !== '\n' && line.trim()) {
             allText.push(line);
           }
         });
       }
       
       // Recursively process nested content
-      if (node.content) {
-        processContent(node.content);
+      if (node.content && Array.isArray(node.content)) {
+        processContent(node.content, depth + 1);
+      }
+      
+      // Also check for elements array (sometimes content is nested here)
+      if (node.elements && Array.isArray(node.elements)) {
+        processContent(node.elements, depth + 1);
       }
     });
   }
   
+  console.log('🔄 Starting to process content, total nodes:', content?.length || 0);
   processContent(content);
+  console.log('✅ Finished processing content, extracted', allText.length, 'lines');
   
   console.log('📝 All extracted text lines:', allText.length);
   if (allText.length > 0) {
