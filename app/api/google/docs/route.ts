@@ -647,7 +647,6 @@ function parseNumberedQuestions(content: any[]): any[] {
   }
   
   return filteredRows;
-  return rows;
 }
 
 export async function GET() {
