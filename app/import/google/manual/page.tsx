@@ -220,9 +220,10 @@ function ManualOrganizeContent() {
             // Pattern continues - next should be question
             expectedNextType = 'question';
           } else if (line.type === 'round') {
-            // New round detected - reset pattern
+            // New round detected - reset pattern and update current round
             expectedNextType = 'question';
             patternRound = line.text;
+            setCurrentRound(line.text);
           } else {
             // Pattern broken - stop suggesting
             break;
@@ -244,6 +245,10 @@ function ManualOrganizeContent() {
                       hasFillInBlank ? 'Expected question (fill-in-blank)' :
                       'Expected question (pattern continuation)'
             };
+            // Auto-assign round if available
+            if (patternRound) {
+              line.round = patternRound;
+            }
             expectedNextType = 'answer'; // Next should be answer
           }
         } else if (expectedNextType === 'answer') {
@@ -436,13 +441,14 @@ function ManualOrganizeContent() {
                     potentialAnswer.text.length < 100 && 
                     !potentialAnswer.text.includes('?')) {
                   
-                  // Auto-pair them
+                  // Auto-pair them - assign to most recent round
+                  const assignedRound = currentRound || findMostRecentRound(updated, currentQIndex) || undefined;
                   updated[currentQIndex] = {
                     ...currentLine,
                     type: 'question' as const,
                     question: currentLine.text,
                     answer: potentialAnswer.text,
-                    round: currentRound || undefined,
+                    round: assignedRound,
                     suggestion: undefined,
                   };
                   
@@ -466,9 +472,12 @@ function ManualOrganizeContent() {
             if (nextLineIndex < updated.length) {
               const nextLine = updated[nextLineIndex];
               if (nextLine.type === 'unknown' && nextLine.text.length < 100 && !nextLine.text.includes('?')) {
+                // Assign to most recent round
+                const assignedRound = currentRound || findMostRecentRound(updated, currentQIndex) || undefined;
                 updated[currentQIndex] = {
                   ...currentLine,
                   answer: nextLine.text,
+                  round: assignedRound,
                   suggestion: undefined,
                 };
                 updated[nextLineIndex] = {
