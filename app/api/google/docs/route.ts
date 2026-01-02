@@ -420,8 +420,19 @@ function parseMatchingFormat(lines: string[], roundName?: string) {
       }
     }
     
-    // Format as question: "Given [A], what is [B]?"
-    const question = `Given ${questionPart}, what is ${answerPart || 'the answer'}?`;
+    // Format question based on round type
+    let question: string;
+    const isFilmRound = roundName && /\b(name\s+the|film|movie|sequel|subtitle|title)\b/i.test(roundName);
+    
+    if (isFilmRound && roundName) {
+      // Film rounds: Use the round name as the question template
+      // Example: "Name the 2025 Film Based on the Sequel" → "Given 'Bloodlines', name the 2025 film based on the sequel"
+      question = `Given "${questionPart}", ${roundName.toLowerCase()}`;
+    } else {
+      // Generic matching: "Given [A], what is [B]?"
+      question = `Given ${questionPart}, what is ${answerPart || 'the answer'}?`;
+    }
+    
     const answer = answerPart || '';
     
     if (questionPart) {
