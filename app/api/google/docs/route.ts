@@ -941,11 +941,16 @@ export async function POST(request: NextRequest) {
     
     const parsedData = parseGoogleDocContent(response.data);
     
+    // Extract raw text lines for manual organization
+    const rawTextLines = extractAllTextLinesSimple(response.data.body?.content || []);
+    
     // Get updated tokens if they were refreshed
     const credentials = oauth2Client.credentials;
     const responseData: any = {
       success: true,
       data: parsedData,
+      rawText: rawTextLines.join('\n'),
+      rawTextLines: rawTextLines,
       documentTitle: response.data.title || 'Untitled Document'
     };
     
