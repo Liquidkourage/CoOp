@@ -121,7 +121,9 @@ function ManualOrganizeContent() {
         type: 'unknown' as const,
       }));
       
-      setOrganizedData(initialData);
+      // Generate initial suggestions
+      const withSuggestions = generateSuggestions(initialData);
+      setOrganizedData(withSuggestions);
     } catch (error: any) {
       console.error('Error fetching document:', error);
       alert(`Error: ${error.message}`);
@@ -134,23 +136,188 @@ function ManualOrganizeContent() {
     window.location.href = '/api/google/auth';
   };
 
-  const updateLineType = (id: string, type: ParsedLine['type']) => {
-    setOrganizedData(prev => prev.map(line => {
-      if (line.id === id) {
-        const updated = { ...line, type };
-        if (type === 'round') {
-          updated.round = line.text;
-          setCurrentRound(line.text);
-        } else if (type === 'question') {
-          updated.question = line.text;
-          updated.round = currentRound || undefined;
-        } else if (type === 'answer') {
-          updated.answer = line.text;
-        }
-        return updated;
+  // Calculate similarity between two strings (Levenshtein distance)
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + cost
+        );
       }
-      return line;
-    }));
+    }
+    return matrix[str2.length][str1.length];
+  };
+
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    if (longer.length === 0) return 1.0;
+    const distance = levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  };
+
+  // Analyze patterns and generate suggestions
+  const generateSuggestions = (data: ParsedLine[]): ParsedLine[] => {
+    const suggestions = [...data];
+    
+    // Analyze patterns from user's previous classifications
+    const roundPatterns: string[] = [];
+    const questionPatterns: { hasQuestionMark: boolean; avgLength: number; count: number } = { hasQuestionMark: false, avgLength: 0, count: 0 };
+    const answerPatterns: { avgLength: number; count: number; afterQuestion: boolean } = { avgLength: 0, count: 0, afterQuestion: false };
+    
+    let questionCount = 0;
+    let answerCount = 0;
+    let roundCount = 0;
+    let totalQuestionLength = 0;
+    let totalAnswerLength = 0;
+    
+    // Analyze classified lines
+    data.forEach((line, idx) => {
+      if (line.type === 'round') {
+        roundCount++;
+        roundPatterns.push(line.text);
+      } else if (line.type === 'question') {
+        questionCount++;
+        totalQuestionLength += line.text.length;
+        if (line.text.includes('?')) {
+          questionPatterns.hasQuestionMark = true;
+        }
+      } else if (line.type === 'answer') {
+        answerCount++;
+        totalAnswerLength += line.text.length;
+        // Check if this answer follows a question
+        if (idx > 0 && data[idx - 1].type === 'question') {
+          answerPatterns.afterQuestion = true;
+        }
+      }
+    });
+    
+    if (questionCount > 0) {
+      questionPatterns.avgLength = totalQuestionLength / questionCount;
+      questionPatterns.count = questionCount;
+    }
+    if (answerCount > 0) {
+      answerPatterns.avgLength = totalAnswerLength / answerCount;
+      answerPatterns.count = answerCount;
+    }
+    
+    // Generate suggestions for unknown lines
+    suggestions.forEach((line, idx) => {
+      if (line.type !== 'unknown') {
+        return; // Skip already classified lines
+      }
+      
+      const lineSuggestions: Array<{ type: 'round' | 'question' | 'answer'; confidence: number; reason: string }> = [];
+      
+      // Check if it looks like a round name
+      if (roundCount > 0) {
+        const isShort = line.text.length < 100;
+        const hasNoQuestionMark = !line.text.includes('?');
+        const matchesRoundPattern = roundPatterns.some(pattern => {
+          const similarity = calculateSimilarity(line.text.toLowerCase(), pattern.toLowerCase());
+          return similarity > 0.7 || (isShort && hasNoQuestionMark && line.text.length > 10);
+        });
+        
+        if (matchesRoundPattern || (isShort && hasNoQuestionMark && line.text.length > 10 && line.text.length < 80)) {
+          lineSuggestions.push({
+            type: 'round',
+            confidence: matchesRoundPattern ? 85 : 60,
+            reason: matchesRoundPattern ? 'Similar to previous round names' : 'Short line without question mark'
+          });
+        }
+      }
+      
+      // Check if it looks like a question
+      if (questionCount > 0) {
+        const hasQuestionMark = line.text.includes('?');
+        const hasFillInBlank = /_{3,}/.test(line.text);
+        const lengthMatch = questionPatterns.avgLength > 0 && Math.abs(line.text.length - questionPatterns.avgLength) < 50;
+        
+        if (hasQuestionMark) {
+          lineSuggestions.push({
+            type: 'question',
+            confidence: 95,
+            reason: 'Contains question mark'
+          });
+        } else if (hasFillInBlank) {
+          lineSuggestions.push({
+            type: 'question',
+            confidence: 90,
+            reason: 'Contains fill-in-the-blank pattern'
+          });
+        } else if (lengthMatch && line.text.length > 50) {
+          lineSuggestions.push({
+            type: 'question',
+            confidence: 70,
+            reason: 'Similar length to previous questions'
+          });
+        }
+      }
+      
+      // Check if it looks like an answer
+      if (answerCount > 0) {
+        const isShort = line.text.length < 100;
+        const hasNoQuestionMark = !line.text.includes('?');
+        const lengthMatch = answerPatterns.avgLength > 0 && Math.abs(line.text.length - answerPatterns.avgLength) < 30;
+        const followsQuestion = idx > 0 && data[idx - 1].type === 'question';
+        
+        if (followsQuestion && isShort && hasNoQuestionMark) {
+          lineSuggestions.push({
+            type: 'answer',
+            confidence: 90,
+            reason: 'Short line following a question'
+          });
+        } else if (lengthMatch && isShort && hasNoQuestionMark) {
+          lineSuggestions.push({
+            type: 'answer',
+            confidence: 75,
+            reason: 'Similar length to previous answers'
+          });
+        }
+      }
+      
+      // Set the best suggestion
+      if (lineSuggestions.length > 0) {
+        const bestSuggestion = lineSuggestions.reduce((best, current) => 
+          current.confidence > best.confidence ? current : best
+        );
+        line.suggestion = bestSuggestion;
+      } else {
+        line.suggestion = undefined;
+      }
+    });
+    
+    return suggestions;
+  };
+
+  const updateLineType = (id: string, type: ParsedLine['type']) => {
+    setOrganizedData(prev => {
+      const updated = prev.map(line => {
+        if (line.id === id) {
+          const updatedLine = { ...line, type, suggestion: undefined };
+          if (type === 'round') {
+            updatedLine.round = line.text;
+            setCurrentRound(line.text);
+          } else if (type === 'question') {
+            updatedLine.question = line.text;
+            updatedLine.round = currentRound || undefined;
+          } else if (type === 'answer') {
+            updatedLine.answer = line.text;
+          }
+          return updatedLine;
+        }
+        return line;
+      });
+      
+      // Regenerate suggestions after classification
+      return generateSuggestions(updated);
+    });
   };
 
   const setLineRound = (id: string, round: string) => {
@@ -169,7 +336,7 @@ function ManualOrganizeContent() {
       
       if (!questionLine || !answerLine) return prev;
       
-      return prev.map(line => {
+      const updated = prev.map(line => {
         if (line.id === questionId) {
           return {
             ...line,
@@ -177,6 +344,7 @@ function ManualOrganizeContent() {
             question: line.text,
             answer: answerLine.text,
             round: currentRound || undefined,
+            suggestion: undefined,
           };
         }
         if (line.id === answerId) {
@@ -184,15 +352,44 @@ function ManualOrganizeContent() {
             ...line,
             type: 'answer' as const,
             answer: line.text,
+            suggestion: undefined,
           };
         }
         return line;
       });
+      
+      // Regenerate suggestions after pairing
+      return generateSuggestions(updated);
     });
   };
 
   const deleteLine = (id: string) => {
-    setOrganizedData(prev => prev.filter(line => line.id !== id));
+    setOrganizedData(prev => {
+      const filtered = prev.filter(line => line.id !== id);
+      return generateSuggestions(filtered);
+    });
+  };
+  
+  const applySuggestionToAll = (suggestionType: 'round' | 'question' | 'answer') => {
+    setOrganizedData(prev => {
+      const updated = prev.map(line => {
+        if (line.type === 'unknown' && line.suggestion && line.suggestion.type === suggestionType && line.suggestion.confidence >= 75) {
+          const updatedLine = { ...line, type: suggestionType, suggestion: undefined };
+          if (suggestionType === 'round') {
+            updatedLine.round = line.text;
+            setCurrentRound(line.text);
+          } else if (suggestionType === 'question') {
+            updatedLine.question = line.text;
+            updatedLine.round = currentRound || undefined;
+          } else if (suggestionType === 'answer') {
+            updatedLine.answer = line.text;
+          }
+          return updatedLine;
+        }
+        return line;
+      });
+      return generateSuggestions(updated);
+    });
   };
 
   const moveLine = (id: string, direction: 'up' | 'down') => {
@@ -334,16 +531,39 @@ function ManualOrganizeContent() {
               </div>
 
               <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e3f2fd', borderRadius: '5px' }}>
-                <label>
-                  Current Round:
-                  <input
-                    type="text"
-                    value={currentRound}
-                    onChange={(e) => setCurrentRound(e.target.value)}
-                    placeholder="Set default round name"
-                    style={{ marginLeft: '10px', padding: '5px', width: '300px' }}
-                  />
-                </label>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  <label>
+                    Current Round:
+                    <input
+                      type="text"
+                      value={currentRound}
+                      onChange={(e) => setCurrentRound(e.target.value)}
+                      placeholder="Set default round name"
+                      style={{ marginLeft: '10px', padding: '5px', width: '300px' }}
+                    />
+                  </label>
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <strong>Quick Actions:</strong>
+                  <button
+                    onClick={() => applySuggestionToAll('round')}
+                    style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}
+                  >
+                    Apply All Round Suggestions
+                  </button>
+                  <button
+                    onClick={() => applySuggestionToAll('question')}
+                    style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#d1ecf1', border: '1px solid #0dcaf0' }}
+                  >
+                    Apply All Question Suggestions
+                  </button>
+                  <button
+                    onClick={() => applySuggestionToAll('answer')}
+                    style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#d4edda', border: '1px solid #198754' }}
+                  >
+                    Apply All Answer Suggestions
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gap: '10px' }}>
@@ -381,6 +601,33 @@ function ManualOrganizeContent() {
                         )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {line.suggestion && line.type === 'unknown' && (
+                          <div style={{ 
+                            padding: '5px', 
+                            fontSize: '11px', 
+                            backgroundColor: '#e3f2fd', 
+                            borderRadius: '3px',
+                            border: '1px solid #2196F3',
+                            marginBottom: '5px'
+                          }}>
+                            💡 <strong>{line.suggestion.type}</strong> ({line.suggestion.confidence}%) - {line.suggestion.reason}
+                            <button
+                              onClick={() => updateLineType(line.id, line.suggestion!.type)}
+                              style={{ 
+                                marginLeft: '5px', 
+                                padding: '2px 6px', 
+                                fontSize: '10px',
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        )}
                         <select
                           value={line.type}
                           onChange={(e) => updateLineType(line.id, e.target.value as ParsedLine['type'])}
