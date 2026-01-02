@@ -302,26 +302,61 @@ function ManualOrganizeContent() {
 
   const updateLineType = (id: string, type: ParsedLine['type']) => {
     setOrganizedData(prev => {
-      const updated = prev.map(line => {
+      const lineIndex = prev.findIndex(l => l.id === id);
+      let newCurrentRound = currentRound;
+      
+      const updated = prev.map((line, idx) => {
         if (line.id === id) {
           const updatedLine = { ...line, type, suggestion: undefined };
           if (type === 'round') {
             updatedLine.round = line.text;
+            newCurrentRound = line.text; // Update current round
             setCurrentRound(line.text);
           } else if (type === 'question') {
             updatedLine.question = line.text;
-            updatedLine.round = currentRound || undefined;
+            // Assign to current round (or the most recent round before this line)
+            updatedLine.round = newCurrentRound || findMostRecentRound(prev, idx) || undefined;
           } else if (type === 'answer') {
             updatedLine.answer = line.text;
           }
           return updatedLine;
         }
+        
+        // Auto-assign round to questions that come after a round name
+        if (type === 'round' && idx > lineIndex && line.type === 'question' && !line.round) {
+          return {
+            ...line,
+            round: newCurrentRound || undefined,
+          };
+        }
+        
         return line;
       });
       
       // Regenerate suggestions after classification
-      return generateSuggestions(updated);
+      const withSuggestions = generateSuggestions(updated);
+      
+      // Auto-assign current round to all subsequent questions until next round
+      return withSuggestions.map((line, idx) => {
+        if (type === 'round' && idx > lineIndex && line.type === 'question' && !line.round) {
+          return {
+            ...line,
+            round: newCurrentRound || undefined,
+          };
+        }
+        return line;
+      });
     });
+  };
+  
+  // Helper function to find the most recent round name before a given index
+  const findMostRecentRound = (data: ParsedLine[], beforeIndex: number): string | null => {
+    for (let i = beforeIndex - 1; i >= 0; i--) {
+      if (data[i].type === 'round') {
+        return data[i].text;
+      }
+    }
+    return null;
   };
 
   const setLineRound = (id: string, round: string) => {
