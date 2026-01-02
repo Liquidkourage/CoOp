@@ -573,32 +573,52 @@ function ManualOrganizeContent() {
       // Import each pair
       let successCount = 0;
       let errorCount = 0;
+      const errors: string[] = [];
 
       for (const pair of pairs) {
         try {
+          // Get current user from localStorage (same as submit page)
+          const savedUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null;
+          const creator = savedUser || 'Unknown';
+
+          // Create FormData to match API expectations
+          const formData = new FormData();
+          const metadata = {
+            creator,
+            question: pair.question,
+            answer: pair.answer,
+            round: pair.round,
+            date: new Date().toISOString(),
+          };
+          
+          formData.append('metadata', JSON.stringify(metadata));
+
           const response = await fetch('/api/submit', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              question: pair.question,
-              answer: pair.answer,
-              round: pair.round,
-            }),
+            body: formData, // Don't set Content-Type header - browser will set it with boundary
           });
 
           if (response.ok) {
             successCount++;
           } else {
+            const errorText = await response.text();
             errorCount++;
+            errors.push(`Question "${pair.question.substring(0, 50)}...": ${errorText}`);
           }
-        } catch (error) {
+        } catch (error: any) {
           errorCount++;
+          errors.push(`Question "${pair.question.substring(0, 50)}...": ${error.message}`);
         }
       }
 
-      alert(`Import complete! ${successCount} items imported successfully, ${errorCount} errors.`);
+      let message = `Import complete! ${successCount} items imported successfully`;
+      if (errorCount > 0) {
+        message += `, ${errorCount} errors`;
+        if (errors.length > 0) {
+          console.error('Import errors:', errors);
+        }
+      }
+      alert(message);
       
       // Reset
       setOrganizedData([]);
