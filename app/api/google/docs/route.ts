@@ -593,6 +593,8 @@ function parseNumberedQuestions(content: any[]): any[] {
   // Process remaining lines - look for question-answer pairs
   // Pattern: Question (has ?) followed by Answer (no ?, usually short)
   let currentQuestion = '';
+  let currentRoundName = roundName;
+  let matchingModeStartIndex = -1;
   
   console.log('📝 Starting to process', allText.length, 'lines for Q&A pairs');
   console.log('📝 First 10 lines preview:', allText.slice(0, 10).map((l, idx) => `${idx}: "${l.substring(0, 60)}${l.length > 60 ? '...' : ''}"`));
@@ -604,6 +606,28 @@ function parseNumberedQuestions(content: any[]): any[] {
     }
     
     const nextLine = i < allText.length - 1 ? allText[i + 1]?.trim() : null;
+    
+    // Check if this line is a new round name (appears mid-document)
+    // Look for patterns like "Name the...", "FitB:", or other round indicators
+    const looksLikeRoundName = line.length < 150 && 
+                               !line.includes('?') && 
+                               !/_{3,}/.test(line) &&
+                               (
+                                 /^(name\s+the|fitb:|round|^[A-Z][^?]*$)/i.test(line) ||
+                                 (line.length < 100 && !/\b(what|who|when|where|why|how|which|whose|whom)\b/i.test(line))
+                               );
+    
+    // Check if this looks like a film/subtitle matching round
+    const isFilmRoundName = /\b(name\s+the.*film|film.*sequel|film.*subtitle|subtitle.*film)\b/i.test(line);
+    
+    if (looksLikeRoundName && isFilmRoundName && matchingModeStartIndex === -1) {
+      // Found a film round - switch to matching mode from this point
+      console.log('🔗 Detected film/subtitle round mid-document:', line);
+      matchingModeStartIndex = i;
+      currentRoundName = line;
+      // Process everything before this as regular Q&A, then switch to matching
+      break; // We'll handle this after the loop
+    }
     
     // Check if line is a question:
     // 1. Contains a question mark (?)
