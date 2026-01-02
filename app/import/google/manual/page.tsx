@@ -340,6 +340,9 @@ function ManualOrganizeContent() {
       
       if (!questionLine || !answerLine) return prev;
       
+      const questionIndex = prev.findIndex(l => l.id === questionId);
+      const answerIndex = prev.findIndex(l => l.id === answerId);
+      
       const updated = prev.map(line => {
         if (line.id === questionId) {
           return {
@@ -361,6 +364,50 @@ function ManualOrganizeContent() {
         }
         return line;
       });
+      
+      // Auto-pair subsequent Q&A pairs if they follow the same pattern
+      // Check if there are more questions and answers following this pattern
+      let nextQuestionIndex = questionIndex + 1;
+      let nextAnswerIndex = answerIndex + 1;
+      
+      // Find the next question (unknown line that looks like a question)
+      while (nextQuestionIndex < updated.length && updated[nextQuestionIndex].type !== 'unknown') {
+        if (updated[nextQuestionIndex].type === 'question' && !updated[nextQuestionIndex].answer) {
+          // Found an unpaired question - try to pair it with the next answer
+          while (nextAnswerIndex < updated.length && updated[nextAnswerIndex].type !== 'unknown' && updated[nextAnswerIndex].type !== 'answer') {
+            nextAnswerIndex++;
+          }
+          if (nextAnswerIndex < updated.length && updated[nextAnswerIndex].type === 'unknown') {
+            // Auto-pair this question with the next unknown line (likely answer)
+            const nextQuestion = updated[nextQuestionIndex];
+            const nextAnswer = updated[nextAnswerIndex];
+            
+            updated[nextQuestionIndex] = {
+              ...nextQuestion,
+              type: 'question' as const,
+              question: nextQuestion.text,
+              answer: nextAnswer.text,
+              round: currentRound || undefined,
+              suggestion: undefined,
+            };
+            
+            updated[nextAnswerIndex] = {
+              ...nextAnswer,
+              type: 'answer' as const,
+              answer: nextAnswer.text,
+              suggestion: undefined,
+            };
+            
+            // Move to next pair
+            nextQuestionIndex = nextAnswerIndex + 1;
+            nextAnswerIndex = nextQuestionIndex + 1;
+          } else {
+            break; // No more answers to pair
+          }
+        } else {
+          nextQuestionIndex++;
+        }
+      }
       
       // Regenerate suggestions after pairing
       return generateSuggestions(updated);
