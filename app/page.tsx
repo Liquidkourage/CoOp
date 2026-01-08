@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navigation from './components/Navigation';
@@ -52,7 +52,7 @@ type ViewMode = 'search' | 'browse' | 'stats' | 'topics' | 'creators' |
                 'qa-pairs' | 'quiz-format' | 'spreadsheet' | 'plain-text' | 
                 'flashcards' | 'bulk-copy' | 'document' | 'structured';
 
-export default function HomePage() {
+function HomePageContent() {
   const { currentUser, setCurrentUser } = useUser();
   const searchParams = useSearchParams();
   const [content, setContent] = useState<ContentItem[]>([]);
