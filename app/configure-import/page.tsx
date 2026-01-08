@@ -705,10 +705,10 @@ export default function ConfigureImportPage() {
           </div>
         )}
 
-        {/* Step 3: Map Columns */}
+        {/* Step 3: Map Fields to Columns */}
         {step === 'mapping' && (
           <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h2>Step 3: Map Your Columns</h2>
+            <h2>Step 3: Map Fields to Columns</h2>
             {editingConfigName && (
               <div style={{ padding: '12px', background: '#d1ecf1', borderRadius: '6px', marginBottom: '15px', border: '2px solid #0c5460', fontSize: '14px' }}>
                 <strong>✏️ Editing:</strong> <span style={{ color: '#0c5460' }}>{editingConfigName}</span>
@@ -733,88 +733,129 @@ export default function ConfigureImportPage() {
               </div>
             )}
             <p style={{ color: '#666', marginBottom: '20px' }}>
-              Map each column from your file to a field in our system. 
-              <strong> At minimum, you must map "Question" and "Creator" fields.</strong>
+              Map detected columns to database fields. Fields marked with ⭐ are required.
             </p>
             
             <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', border: '2px solid #ffc107' }}>
-              <strong>💡 Tip:</strong> Select a field from any dropdown below to see its description. 
-              Or scroll down to view all field descriptions at once.
+              <strong>💡 Tip:</strong> Select multiple columns for each field if needed. Hold Ctrl/Cmd to select multiple columns.
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
-              {headers.map((header, idx) => {
-                const currentMapping = columnMapping[header] || '';
-                const sampleValue = previewData[0]?.[header];
-                
-                return (
-                  <div key={idx} style={{ 
-                    marginBottom: '15px', 
-                    padding: '15px', 
-                    background: '#f8f9fa', 
-                    borderRadius: '6px',
-                    border: '1px solid #dee2e6'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1', minWidth: '200px' }}>
-                        <strong style={{ display: 'block', marginBottom: '5px' }}>Your Column:</strong>
-                        <code style={{ background: '#fff', padding: '5px 10px', borderRadius: '4px', fontSize: '14px' }}>
-                          {header}
-                        </code>
-                        {sampleValue && (
-                          <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                            Sample: {String(sampleValue).substring(0, 50)}
+            <div style={{
+              background: '#fff',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              marginBottom: '30px'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '25%' }}>Database Field</th>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '50%' }}>Mapped From Column(s)</th>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '25%' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TARGET_FIELDS.filter(f => f.value !== 'skip').map((fieldDef) => {
+                    // Find all columns mapped to this field
+                    const mappedColumns = headers.filter(h => columnMapping[h] === fieldDef.value);
+                    
+                    return (
+                      <tr key={fieldDef.value} style={{ borderBottom: '1px solid #dee2e6' }}>
+                        <td style={{ padding: '12px', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                            {fieldDef.label} {fieldDef.required ? '⭐' : ''}
                           </div>
-                        )}
-                      </div>
-                      <div style={{ flex: '1', minWidth: '200px' }}>
-                        <strong style={{ display: 'block', marginBottom: '5px' }}>Map to:</strong>
-                        <select
-                          value={currentMapping}
-                          onChange={(e) => {
-                            setColumnMapping({ ...columnMapping, [header]: e.target.value });
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            border: '1px solid #ccc',
-                            fontSize: '14px'
-                          }}
-                          title={currentMapping ? TARGET_FIELDS.find(f => f.value === currentMapping)?.description : ''}
-                        >
-                          <option value="">-- Select Field --</option>
-                          {TARGET_FIELDS.map(field => (
-                            <option key={field.value} value={field.value} title={field.description}>
-                              {field.label} {field.required ? '⭐' : ''}
-                            </option>
-                          ))}
-                        </select>
-                        {currentMapping && TARGET_FIELDS.find(f => f.value === currentMapping)?.description && (
-                          <div style={{ 
-                            marginTop: '10px', 
-                            padding: '12px', 
-                            background: '#e7f3ff', 
-                            borderRadius: '6px', 
-                            fontSize: '13px',
-                            color: '#0066cc',
-                            border: '2px solid #b3d9ff',
-                            lineHeight: '1.5'
-                          }}>
-                            <div style={{ fontWeight: '600', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>ℹ️</span>
-                              <span>Field Description:</span>
-                            </div>
-                            <div style={{ color: '#333', paddingLeft: '20px' }}>
-                              {TARGET_FIELDS.find(f => f.value === currentMapping)?.description}
-                            </div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            {fieldDef.description}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <select
+                            multiple
+                            value={mappedColumns}
+                            onChange={(e) => {
+                              const selectedColumns = Array.from(e.target.selectedOptions, option => option.value);
+                              
+                              // Update mappings: set selected columns to this field, remove others from this field
+                              const newMapping = { ...columnMapping };
+                              
+                              // Remove all columns that were previously mapped to this field
+                              headers.forEach(header => {
+                                if (columnMapping[header] === fieldDef.value) {
+                                  if (!selectedColumns.includes(header)) {
+                                    delete newMapping[header];
+                                  }
+                                }
+                              });
+                              
+                              // Add selected columns to this field
+                              selectedColumns.forEach(header => {
+                                newMapping[header] = fieldDef.value;
+                              });
+                              
+                              setColumnMapping(newMapping);
+                            }}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc',
+                              width: '100%',
+                              minHeight: '80px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            {headers.map(header => {
+                              const sampleValue = previewData[0]?.[header];
+                              return (
+                                <option 
+                                  key={header} 
+                                  value={header}
+                                  style={{ padding: '4px' }}
+                                >
+                                  {header}
+                                  {sampleValue && ` (${String(sampleValue).substring(0, 30)}...)`}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                            Hold Ctrl/Cmd to select multiple columns
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px', verticalAlign: 'top' }}>
+                          {mappedColumns.length > 0 ? (
+                            <div>
+                              {mappedColumns.map((column, idx) => (
+                                <div key={idx} style={{ marginBottom: '4px' }}>
+                                  <span style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    background: '#d4edda',
+                                    color: '#155724',
+                                    fontSize: '11px',
+                                    display: 'inline-block',
+                                    marginBottom: '2px'
+                                  }}>
+                                    {column}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#999', fontSize: '12px' }}>Not mapped</span>
+                          )}
+                          {fieldDef.required && mappedColumns.length === 0 && (
+                            <div style={{ color: '#dc3545', fontSize: '11px', marginTop: '4px' }}>
+                              ⚠️ Required field
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             <div style={{ padding: '15px', background: '#e7f3ff', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
