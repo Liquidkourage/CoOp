@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Navigation from './components/Navigation';
 import { useUser } from './contexts/UserContext';
 import BulkOperations from './components/BulkOperations';
@@ -53,6 +54,7 @@ type ViewMode = 'search' | 'browse' | 'stats' | 'topics' | 'creators' |
 
 export default function HomePage() {
   const { currentUser, setCurrentUser } = useUser();
+  const searchParams = useSearchParams();
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,6 +177,27 @@ export default function HomePage() {
       loadContent(1, true);
     }
   }, [viewMode]);
+
+  // Check for query parameters on mount (e.g., from /my-content redirect)
+  useEffect(() => {
+    if (searchParams) {
+      const creatorParam = searchParams.get('creator');
+      const viewParam = searchParams.get('view');
+      
+      if (creatorParam && currentUser && creatorParam === currentUser) {
+        setSelectedCreator(creatorParam);
+        if (viewParam) {
+          setViewMode(viewParam as ViewMode);
+        } else {
+          setViewMode('search');
+        }
+        // Trigger search after state is set
+        setTimeout(() => {
+          handleSearch();
+        }, 100);
+      }
+    }
+  }, [searchParams, currentUser]);
 
   const toggleSelect = (id: string) => {
     setSelectedItems(prev => {
