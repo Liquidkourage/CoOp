@@ -632,12 +632,12 @@ export default function ImportPage() {
             </button>
           </div>
 
-          {/* Column Mapping */}
+          {/* Field Mapping - Field-Centric View */}
           {mappings.length > 0 && (
             <div style={{ marginBottom: '30px' }}>
-              <h2 style={{ marginBottom: '15px' }}>Column Mapping</h2>
+              <h2 style={{ marginBottom: '15px' }}>Field Mapping</h2>
               <p style={{ color: '#666', marginBottom: '15px' }}>
-                Review and adjust how columns are mapped to fields. Fields marked with ⭐ are required.
+                Map detected columns to database fields. Fields marked with ⭐ are required.
               </p>
               
               <div style={{
@@ -649,54 +649,141 @@ export default function ImportPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f8f9fa' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Source Column</th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Map To</th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Confidence</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '25%' }}>Database Field</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '50%' }}>Mapped From Column(s)</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6', width: '25%' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {mappings.map((mapping, idx) => {
-                      const fieldDef = FIELD_DEFINITIONS.find(f => f.value === mapping.targetField);
+                    {FIELD_DEFINITIONS.filter(f => f.value !== 'skip').map((fieldDef) => {
+                      // Find all columns mapped to this field
+                      const mappedColumns = mappings.filter(m => m.targetField === fieldDef.value);
+                      const unmappedColumns = mappings.filter(m => m.targetField === 'skip');
+                      
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #dee2e6' }}>
-                          <td style={{ padding: '12px' }}>{mapping.sourceColumn}</td>
+                        <tr key={fieldDef.value} style={{ borderBottom: '1px solid #dee2e6' }}>
+                          <td style={{ padding: '12px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                              {fieldDef.label} {fieldDef.required ? '⭐' : ''}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                              {fieldDef.description}
+                            </div>
+                          </td>
                           <td style={{ padding: '12px' }}>
                             <select
-                              value={mapping.targetField}
-                              onChange={(e) => updateMapping(mapping.sourceColumn, e.target.value)}
+                              multiple
+                              value={mappedColumns.map(m => m.sourceColumn)}
+                              onChange={(e) => {
+                                const selectedColumns = Array.from(e.target.selectedOptions, option => option.value);
+                                
+                                // Update mappings: set selected columns to this field, remove others from this field
+                                setMappings(prev => {
+                                  const updated = prev.map(m => {
+                                    // If this column is selected, map it to this field
+                                    if (selectedColumns.includes(m.sourceColumn)) {
+                                      return { ...m, targetField: fieldDef.value, confidence: m.confidence || 100 };
+                                    }
+                                    // If this column was previously mapped to this field but is no longer selected, set to skip
+                                    if (m.targetField === fieldDef.value && !selectedColumns.includes(m.sourceColumn)) {
+                                      return { ...m, targetField: 'skip', confidence: 0 };
+                                    }
+                                    return m;
+                                  });
+                                  
+                                  // Update preview with new mappings
+                                  if (file && previewRows.length > 0) {
+                                    setTimeout(() => {
+                                      const fileName = file.name.toLowerCase();
+                                      const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+                                      
+                                      file.arrayBuffer().then(buffer => {
+                                        let parsedData: any[] = [];
+                                        
+                                        if (isExcel) {
+                                          const workbook = XLSX.read(buffer, { type: 'array' });
+                                          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                                          const fileHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim());
+                                          const rows = (jsonData.slice(1) as any[]).filter((row: any) => Array.isArray(row) && row.some((cell: any) => cell !== null && cell !== undefined && String(cell).trim() !== '')) as any[][];
+                                          
+                                          parsedData = rows.map((row: any[]) => {
+                                            const obj: Record<string, any> = {};
+                                            fileHeaders.forEach((header, colIdx) => {
+                                              obj[header] = row[colIdx] !== undefined ? row[colIdx] : '';
+                                            });
+                                            return obj;
+                                          });
+                                        } else {
+                                          file.text().then(text => {
+                                            const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+                                            parsedData = parsed.data as any[];
+                                            updatePreview(parsedData, updated);
+                                          });
+                                          return;
+                                        }
+                                        
+                                        updatePreview(parsedData, updated);
+                                      });
+                                    }, 0);
+                                  }
+                                  
+                                  return updated;
+                                });
+                              }}
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: '4px',
                                 border: '1px solid #ccc',
                                 width: '100%',
-                                maxWidth: '300px'
+                                minHeight: '80px',
+                                fontSize: '14px'
                               }}
                             >
-                              {FIELD_DEFINITIONS.map(field => (
-                                <option key={field.value} value={field.value}>
-                                  {field.label} {field.required ? '⭐' : ''}
+                              {headers.map(header => (
+                                <option 
+                                  key={header} 
+                                  value={header}
+                                  style={{ padding: '4px' }}
+                                >
+                                  {header}
+                                  {mappings.find(m => m.sourceColumn === header && m.targetField === fieldDef.value)?.confidence && 
+                                    mappings.find(m => m.sourceColumn === header && m.targetField === fieldDef.value)!.confidence > 0 && 
+                                    ` (${mappings.find(m => m.sourceColumn === header && m.targetField === fieldDef.value)!.confidence.toFixed(0)}%)`}
                                 </option>
                               ))}
                             </select>
-                            {fieldDef && (
-                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                {fieldDef.description}
-                              </div>
-                            )}
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                              Hold Ctrl/Cmd to select multiple columns
+                            </div>
                           </td>
-                          <td style={{ padding: '12px' }}>
-                            {mapping.confidence > 0 ? (
-                              <span style={{
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                background: mapping.confidence > 70 ? '#d4edda' : '#fff3cd',
-                                color: mapping.confidence > 70 ? '#155724' : '#856404',
-                                fontSize: '12px'
-                              }}>
-                                {mapping.confidence.toFixed(0)}%
-                              </span>
+                          <td style={{ padding: '12px', verticalAlign: 'top' }}>
+                            {mappedColumns.length > 0 ? (
+                              <div>
+                                {mappedColumns.map((mapping, idx) => (
+                                  <div key={idx} style={{ marginBottom: '4px' }}>
+                                    <span style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      background: mapping.confidence > 70 ? '#d4edda' : '#fff3cd',
+                                      color: mapping.confidence > 70 ? '#155724' : '#856404',
+                                      fontSize: '11px',
+                                      display: 'inline-block',
+                                      marginBottom: '2px'
+                                    }}>
+                                      {mapping.sourceColumn}
+                                      {mapping.confidence > 0 && ` (${mapping.confidence.toFixed(0)}%)`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             ) : (
-                              <span style={{ color: '#999' }}>Manual</span>
+                              <span style={{ color: '#999', fontSize: '12px' }}>Not mapped</span>
+                            )}
+                            {fieldDef.required && mappedColumns.length === 0 && (
+                              <div style={{ color: '#dc3545', fontSize: '11px', marginTop: '4px' }}>
+                                ⚠️ Required field
+                              </div>
                             )}
                           </td>
                         </tr>
