@@ -12,6 +12,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/my-content', label: 'My Content', icon: '👤' },
   { href: '/stats', label: 'Statistics', icon: '📊' },
   { href: '/rounds', label: 'Rounds', icon: '📋' },
   { href: '/sets', label: 'Sets', icon: '📚' },
@@ -28,10 +29,13 @@ export default function Navigation() {
   const pathname = usePathname();
   const { currentUser } = useUser();
 
-  // Filter out login link if already logged in
+  // Filter navigation items based on login status
   const filteredNavItems = navItems.filter(item => {
     if (item.href === '/login') {
       return !currentUser; // Only show login if not logged in
+    }
+    if (item.href === '/my-content') {
+      return !!currentUser; // Only show "My Content" if logged in
     }
     return true;
   });
