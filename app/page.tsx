@@ -2031,3 +2031,18 @@ function HomePageContent() {
     </div>
   );
 }
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div>
+        <Navigation />
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
+  );
+}
